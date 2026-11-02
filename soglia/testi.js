@@ -120,9 +120,9 @@ export const VOCI = [
 ];
 
 // Il paragrafo sulla stance interpersonale: dal prompt, da mostrare forse nella scheda del mezzanino
-// (tua risposta: «b forse sì»). Resta spento finché non lo confermi.
+// (confermato in chat: «5. sì»).
 export const MEZZANINO_SPIEGAZIONE = {
-  attivo: false,
+  attivo: true,
   testo: "La stance interpersonale (il mezzanino) è la posizione affettiva che si prende verso una persona precisa dentro un'interazione: dura quanto l'incontro, minuti o ore, e si riaccende ogni volta che quella persona compare. La disposizione stabile verso quella persona, che dura mesi, è invece un atteggiamento (l'anticamera).",
 };
 
@@ -144,6 +144,10 @@ export const INTERFACCIA = {
   nascondiTesti: "Nascondi i testi",
   caricamento: "Sto costruendo l'edificio",
   senza3D: "Il modello non si apre su questo dispositivo. I testi restano qui.",
+  // aggiunte per il modello navigabile (3 novembre 2026), da approvare
+  racconta: "Racconta",
+  attraversa: "Attraversa",
+  avanza: "Scorri, trascina o usa le frecce per avanzare",
 };
 
 // Raccordi della voce narrante (punto 6: «testi, aggiungendo frasi di raccordo»).

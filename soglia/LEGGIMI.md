@@ -1,13 +1,15 @@
 # La Soglia · il modello 3D dell'edificio del Modulo 1, da capo
 
-Stato: prime consegne, da approvare prima di costruire il modello.
+Stato: prima versione navigabile del modello (`index.html`, `main.js`, `mondo.js`), costruita sulla quarta prova visiva. Gli studi restano in `studio/`.
 
 | File | Che cos'è |
 |---|---|
 | `fonte/PROMPT_MODULO_1.md` | Il prompt del Modulo 1, così come l'hai dato: l'unica fonte dei testi. |
 | `testi.js` | Tutti i testi del modello, in tre blocchi: dal prompt (alla lettera), approvati in chat, proposte mie da approvare. |
 | `COPIONE.md` | Il copione della voce narrante da registrare: 58 pezzi, ognuno con il nome del file. Si genera da `testi.js`. |
-| `studio/` | Lo studio visivo (pagina 3D senza testi) e le tre immagini in `studio/immagini/`. |
+| `index.html`, `main.js`, `mondo.js` | Il modello: due modi (Racconta, Attraversa), gli spazi con i testi, le tredici voci dello Smistamento, il piano di sotto con quota, ampiezza, valenza, attivazione e i quattro appoggi. |
+| `../public/soglia/voce/` | Le registrazioni della voce narrante: un file per pezzo del copione, e il suo nome in `elenco.json`. Finché un file manca, legge la voce sintetica. |
+| `studio/` | Gli studi visivi e le immagini in `studio/immagini/`. |
 
 Comandi:
 

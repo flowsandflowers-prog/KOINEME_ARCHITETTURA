@@ -58,7 +58,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 |---|---|
 | Pezzi da registrare | **${P.length}**, di cui ${P.length - raccordi.length} dai testi del Modulo 1 e ${raccordi.length} raccordi |
 | Un file per pezzo | con il nome indicato, in \`.mp3\` o \`.m4a\` (anche \`.wav\` va bene, li converto io) |
-| Dove vanno | nella cartella \`soglia/voce/\`, oppure me li mandi e li metto io |
+| Dove vanno | nella cartella \`public/soglia/voce/\` (e il nome in \`elenco.json\`), oppure me li mandi e li metto io |
 | Inizio e fine | mezzo secondo di silenzio prima e dopo; li taglio io se servono |
 | Il punto mediano « · » | si legge come una pausa breve |
 | Le note | (*Trascina per girarci intorno…*, *Sotto: il piano di sotto…*, *Intorno, otto stanze…*, *Muovi la quota…*) restano **solo scritte**: sono istruzioni per lo schermo |

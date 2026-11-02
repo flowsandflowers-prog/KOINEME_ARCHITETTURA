@@ -8,7 +8,7 @@
 |---|---|
 | Pezzi da registrare | **58**, di cui 53 dai testi del Modulo 1 e 5 raccordi |
 | Un file per pezzo | con il nome indicato, in `.mp3` o `.m4a` (anche `.wav` va bene, li converto io) |
-| Dove vanno | nella cartella `soglia/voce/`, oppure me li mandi e li metto io |
+| Dove vanno | nella cartella `public/soglia/voce/` (e il nome in `elenco.json`), oppure me li mandi e li metto io |
 | Inizio e fine | mezzo secondo di silenzio prima e dopo; li taglio io se servono |
 | Il punto mediano « · » | si legge come una pausa breve |
 | Le note | (*Trascina per girarci intorno…*, *Sotto: il piano di sotto…*, *Intorno, otto stanze…*, *Muovi la quota…*) restano **solo scritte**: sono istruzioni per lo schermo |
