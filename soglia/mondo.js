@@ -200,8 +200,8 @@ export function costruisci(scene, { low = false } = {}) {
     face.scale.y = Math.max(0.01, liv - 3 - FOND); face.position.y = liv - 3; menisco.position.y = liv - 3.12;
     motes.scale.y = Math.max(0.01, liv - 5 - FOND); motes.position.y = FOND + 1;
     // i tronchi: dalle fondamenta alla pellicola; quello tolto si ritira verso il basso
-    const span = Math.max(1, liv - 0.4 - FOND);
-    for (let i = 0; i < 4; i++) { const a = alberi[i]; a.trunk.scale.set(1, span * (0.25 + 0.75 * a.presente), 1); a.trunk.position.y = -0.4 - span * 0.75 * (1 - a.presente); }
+    const span = Math.max(1, liv - 2.2 - FOND);
+    for (let i = 0; i < 4; i++) { const a = alberi[i]; a.trunk.scale.set(1, span * (0.25 + 0.75 * a.presente), 1); a.trunk.position.y = -2.2 - span * 0.75 * (1 - a.presente); }
     // la pellicola: poggia sulle cime dei tronchi presenti; senza appoggio cede. L'ampiezza la allarga
     if ((fframe++ & 1) === 0) {
       const p = filmG.attributes.position.array, sc = 0.75 + 0.5 * st.ampiezza, sig2 = 2 * 30 * 30, amp = 0.35 * st.attivazione;
