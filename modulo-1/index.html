@@ -164,7 +164,7 @@ const SPACES={
   corridoio:{name:"Il corridoio",cam:[V(33,9,-3),V(16,8,-13)],
     text:["Passaggio, e non destinazione. È il pensiero, la valutazione senza corpo: da qui si parla delle stanze stando fuori da tutte. E un pensiero che prova a entrare e non riesce resta a camminare lì, avanti e indietro, e cammina perché la porta non si apre. Quella è la ruminazione."]},
   mezzanino:{name:"Il mezzanino",cam:[V(-39,14,9),V(-24,9.5,-4)],
-    text:["Mezza quota fra la stanza e la struttura, raggiungibile da entrambe e identico a nessuna delle due. Durata intermedia, valutazione intermedia, quota intermedia."]},
+    text:["Mezza quota fra la stanza e la struttura, raggiungibile da entrambe e identico a nessuna delle due. Diffidenza stabile verso una persona precisa: dura troppo per essere un episodio, e la valutazione da cui nasce è parziale, perché si riaccende quando quella persona compare e si abbassa quando esce. Durata intermedia, valutazione intermedia, quota intermedia."]},
   vie:{name:"Le due vie",cam:[V(0,14,40),V(0,8,4)],
     text:["La Soglia si attraversa sempre. I quattro passi no.","L'esito che manda al piano di sotto è il più frequente dei due, e per questo l'atrio serve più delle stanze."],
     formula:"SOGLIA → C.O.R.E."},
@@ -190,10 +190,11 @@ const VOCI=[
  ["Da tre settimane dormo male, e oggi ogni cosa che mi chiedono mi fa scattare.","niente di preciso, cambia ogni volta","no","no","core"],
  ["Vergogna dopo aver urlato.","quello che ho fatto","sì","sì","emo"],
  ["L'affetto per quella stessa persona, anche adesso che non è qui.","quella persona","sì, ma non adesso","no","att"],
- ["«Questa giornata è cominciata troppo presto, ecco da dove viene questa stanchezza.»","la stanchezza","sì","no, solo contenuto mentale","pens"]
+ ["«Questa giornata è cominciata troppo presto, ecco da dove viene questa stanchezza.»","la stanchezza","sì","no, solo contenuto mentale","pens"],
+ ["Diffidenza stabile verso una collega.","quella collega","sì, ma parziale: si riaccende quando lei compare","in parte","stance"]
 ];
-const DEST={omeo:"sentimento omeostatico · le fondamenta",core:"core affect e umore · il piano di sotto",emo:"emozione · la stanza",att:"atteggiamento · l'anticamera",pens:"pensiero e giudizio · il corridoio",tratto:"tratto · la forma dell'edificio"};
-const DEST_SPACE={emo:'stanza',att:'anticamera',pens:'corridoio',core:'sotto',omeo:'fondamenta',tratto:'forma'};
+const DEST={omeo:"sentimento omeostatico · le fondamenta",core:"core affect e umore · il piano di sotto",emo:"emozione · la stanza",att:"atteggiamento · l'anticamera",pens:"pensiero e giudizio · il corridoio",tratto:"tratto · la forma dell'edificio",stance:"stance interpersonale · il mezzanino"};
+const DEST_SPACE={emo:'stanza',att:'anticamera',pens:'corridoio',core:'sotto',omeo:'fondamenta',tratto:'forma',stance:'mezzanino'};
 
 /* ---------- renderer ---------- */
 const canvas=document.getElementById('scene');
@@ -582,7 +583,7 @@ const MZ=V(-25,9.5,-4);
   const rail=[];for(let i=0;i<=90;i++){const a=i/90*Math.PI*2;rail.push(V(MZ.x+Math.sin(a)*3.3,MZ.y+0.85+0.14*Math.sin(a*7),MZ.z+Math.cos(a)*3.3));}put(tube(rail,0.13,tileSea,180));
   function ramp(from,ctrl,to){const c=new THREE.QuadraticBezierCurve3(from,ctrl,to);for(let i=0;i<=28;i++){const t=i/28;const p=c.getPoint(t);const tg=c.getTangent(t);const s=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.18,0.6),i%4?ochreMat:tileMix);s.position.copy(p);s.lookAt(p.clone().add(tg));put(s);}}
   ramp(V(-22.2,9.6,-2.6),V(-19,15,-4),V(-17.6,gU(-17.6,-3)+0.1,-3));
-  ramp(V(-28.2,9.6,-4.6),V(-30,8.5,-6),V(-31.6,7.6,-6.4));
+  ramp(V(-28.2,9.6,-4.6),V(-31,6,-6.5),V(-29.2,gH(-29.2,-9.5)+0.1,-9.5));
 }
 
 /* =========================================================
@@ -755,6 +756,9 @@ function startVoce(i,opts){
   if(d==='pens'){push(V(8,gH(8,-4),-4),1.4);const cp=corrCurve.getPoints(40).map(p=>p.clone().setY(p.y+0.1));push(cp[0],1.2);cp.forEach((p,j)=>push(p,0.11,j===40?{say:final}:null));for(let r=0;r<2;r++){cp.slice(18).reverse().forEach(p=>push(p,0.1));cp.slice(18).forEach(p=>push(p,0.1));}}
   if(d==='core'){down();push(V(-18,-5.2,2),1.6,{ride:true,say:final});}
   if(d==='omeo'){down();push(V(-6,-8.6,4),1.6);push(V(-3,-11.4,2),1.6,{say:final});}
+  if(d==='stance'){up();const a1=V(-8,0,4);a1.y=gU(a1.x,a1.z);push(a1,1.6);const a2=V(-17.6,0,-3);a2.y=gU(a2.x,a2.z)+0.1;push(a2,1.8);
+    const rc=new THREE.QuadraticBezierCurve3(a2,V(-19,15,-4),V(-22.2,9.6,-2.6));for(let q=1;q<=14;q++)push(rc.getPoint(q/14).add(V(0,0.12,0)),0.14);
+    push(V(MZ.x,MZ.y+0.3,MZ.z),1.3,{arrive:()=>{chime(247,.1);},say:final});}
   if(d==='tratto'){push(V(0,6,0),1.6);push(V(0,48,-4),3.2,{arrive:()=>{planTarget=1;},say:final});}
   VF.g.visible=true;VF.g.position.copy(wp(route[0].p));VF.last.copy(VF.g.position);VF.yaw=Math.PI;
   vrun={id,d,route,i:1,s:performance.now(),from:route[0].p.clone(),wait:Infinity,ride:false};
