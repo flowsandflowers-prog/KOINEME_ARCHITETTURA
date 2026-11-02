@@ -164,7 +164,7 @@ const SPACES={
   corridoio:{name:"Il corridoio",cam:[V(33,9,-3),V(16,8,-13)],
     text:["Passaggio, e non destinazione. È il pensiero, la valutazione senza corpo: da qui si parla delle stanze stando fuori da tutte. E un pensiero che prova a entrare e non riesce resta a camminare lì, avanti e indietro, e cammina perché la porta non si apre. Quella è la ruminazione."]},
   mezzanino:{name:"Il mezzanino",cam:[V(-39,14,9),V(-24,9.5,-4)],
-    text:["Mezza quota fra la stanza e la struttura, raggiungibile da entrambe e identico a nessuna delle due. Diffidenza stabile verso una persona precisa: dura troppo per essere un episodio, e la valutazione da cui nasce è parziale, perché si riaccende quando quella persona compare e si abbassa quando esce. Durata intermedia, valutazione intermedia, quota intermedia."]},
+    text:["Mezza quota fra la stanza e la struttura, raggiungibile da entrambe e identico a nessuna delle due. Diffidenza verso una persona precisa, per tutto l'incontro: dura troppo per essere un episodio, e la valutazione da cui nasce è parziale, perché si riaccende quando quella persona compare e si abbassa quando esce. Durata intermedia, valutazione intermedia, quota intermedia."]},
   vie:{name:"Le due vie",cam:[V(0,14,40),V(0,8,4)],
     text:["La Soglia si attraversa sempre. I quattro passi no.","L'esito che manda al piano di sotto è il più frequente dei due, e per questo l'atrio serve più delle stanze."],
     formula:"SOGLIA → C.O.R.E."},
@@ -173,7 +173,7 @@ const SPACES={
     note:"Muovi la quota e l'ampiezza: tutto l'edificio risponde."},
   fondamenta:{name:"Le fondamenta",cam:[V(32,-10,32),V(0,-11,0)],
     text:["Lo strato il cui oggetto è il corpo: fame, sete, stanchezza, dolore, nausea, malessere, benessere. Nessuno visita le proprie fondamenta, e le fondamenta si sentono in ogni stanza. Quando cedono di un millimetro, le porte di sopra smettono di chiudere, e in genere si cerca il guasto nelle porte."]},
-  forma:{name:"La forma dell'edificio",cam:[V(0,112,0.1),V(0,0,0)],
+  forma:{name:"La struttura dell'edificio",cam:[V(0,112,0.1),V(0,0,0)],
     text:["Quali porte sono larghe, quali stanze grandi, quali passaggi stretti. È il tratto disegnato della mappa, e non è un posto in cui ti trovi: è il modo in cui la tua casa è costruita."]}
 };
 const ORDER=["esterno","quote","atrio","vie","stanza","anticamera","corridoio","mezzanino","sotto","fondamenta","forma"];
@@ -191,9 +191,9 @@ const VOCI=[
  ["Vergogna dopo aver urlato.","quello che ho fatto","sì","sì","emo"],
  ["L'affetto per quella stessa persona, anche adesso che non è qui.","quella persona","sì, ma non adesso","no","att"],
  ["«Questa giornata è cominciata troppo presto, ecco da dove viene questa stanchezza.»","la stanchezza","sì","no, solo contenuto mentale","pens"],
- ["Diffidenza stabile verso una collega.","quella collega","sì, ma parziale: si riaccende quando lei compare","in parte","stance"]
+ ["Diffidenza verso una collega, per tutta la riunione.","quella collega","sì, ma parziale: si riaccende ogni volta che lei compare","in parte","stance"]
 ];
-const DEST={omeo:"sentimento omeostatico · le fondamenta",core:"core affect e umore · il piano di sotto",emo:"emozione · la stanza",att:"atteggiamento · l'anticamera",pens:"pensiero e giudizio · il corridoio",tratto:"tratto · la forma dell'edificio",stance:"stance interpersonale · il mezzanino"};
+const DEST={omeo:"sentimento omeostatico · le fondamenta",core:"core affect e umore · il piano di sotto",emo:"emozione · la stanza",att:"atteggiamento · l'anticamera",pens:"pensiero e giudizio · il corridoio",tratto:"tratto · la struttura dell'edificio",stance:"stance interpersonale · il mezzanino"};
 const DEST_SPACE={emo:'stanza',att:'anticamera',pens:'corridoio',core:'sotto',omeo:'fondamenta',tratto:'forma',stance:'mezzanino'};
 
 /* ---------- renderer ---------- */
@@ -624,7 +624,7 @@ const ROOTS=new THREE.Group();scene.add(ROOTS);
   put(branch([V(0,-12,0),V(0.3,-9.5,0),V(0,-7.2,0)],2.6,1.1,boneMat,10),ROOTS);
 }
 
-/* --- la forma dell'edificio: il disegno --- */
+/* --- la struttura dell'edificio: il disegno --- */
 const planMat=new THREE.LineBasicMaterial({color:0xf4c56e,transparent:true,opacity:0});
 function circ(c,r,y){const p=[];for(let i=0;i<=120;i++){const a=i/120*Math.PI*2;p.push(V(c.x+Math.sin(a)*r,y,c.z+Math.cos(a)*r));}BUILD.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),planMat));}
 circ(V(0,0,0),9.6,1.2);circ(V(0,0,0),5.2,UL+1.2);circ(A,2.9,A.y+1.2);circ(MZ,3.3,MZ.y+0.6);circ(H_UP,3.2,1.2);circ(D_HOLE,3.3,1.2);circ(CC,5,1.2);circ(V(0,0,0),21,UL+1.4);
@@ -678,7 +678,7 @@ const LABELS=[
  ["La Soglia","atrio",V(0,9,2)],["La stanza","stanza",V(0,UL+10,0)],["L'anticamera","anticamera",V(A.x,A.y+5.8,A.z)],
  ["Il corridoio","corridoio",V(CC.x+5,9,CC.z)],["Il mezzanino","mezzanino",V(MZ.x,MZ.y+2,MZ.z)],["Verso la stanza","vie",V(H_UP.x,8,H_UP.z)],
  ["Verso il piano di sotto","vie",V(D_HOLE.x,1.8,D_HOLE.z)],["Il piano di sotto","sotto",V(27,-5,22),true],["Le fondamenta","fondamenta",V(24,-11,15),true],
- ["La forma dell'edificio","forma",V(-24,10.5,-21)]
+ ["La struttura dell'edificio","forma",V(-24,10.5,-21)]
 ].map(([t,k,p,low])=>{const el=document.createElement('div');el.className='lab';el.textContent=t;el.addEventListener('click',()=>select(k));labelsEl.appendChild(el);return{el,p,low};});
 appoggi.forEach(a=>{const el=document.createElement('div');el.className='lab small';el.textContent=a.name;el.addEventListener('click',()=>select('sotto'));labelsEl.appendChild(el);LABELS.push({el,p:a.mesh.position,app:a});});
 
