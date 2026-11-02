@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>L'edificio di KOINEME · v5x</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: scena a tutto schermo; quaderno di vetro fumé che si apre e si chiude a sinistra (in basso sul telefono) */
+:root{
+  --night:#0d0b0a;
+  --ivory:#ecdcc0;
+  --ochre:#c79a5b;
+  --ink:#f1e7d6;
+  --ink-soft:#c9bba4;
+  --glow:#f4c56e;
+  --sea:#3c9e9a;
+  --panel:rgba(18,15,13,.42);
+  --line:rgba(236,220,192,.18);
+  --display:"Fraunces",Georgia,"Times New Roman",serif;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0;background:var(--night);color:var(--ink);font-family:var(--body);overflow:hidden}
+#scene{position:fixed;inset:0;display:block;width:100%;height:100%;touch-action:none}
+.panel{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:calc(14px + env(safe-area-inset-left,0px));width:340px;max-height:calc(100% - 28px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow-y:auto;background:var(--panel);backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2);border:1px solid var(--line);border-radius:16px;padding:18px 18px 14px;display:flex;flex-direction:column;gap:14px;transition:transform .55s cubic-bezier(.7,0,.2,1),opacity .55s;scrollbar-width:thin}
+.panel.closed{transform:translateX(calc(-100% - 30px));opacity:0;pointer-events:none}
+.panel.hide{opacity:0;pointer-events:none}
+.toggle{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:calc(14px + env(safe-area-inset-left,0px));z-index:5;font:600 12px var(--body);letter-spacing:.08em;color:var(--ink);background:var(--panel);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .4s}
+.toggle.on{opacity:1;pointer-events:auto}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.close{background:none;border:1px solid var(--line);color:var(--ink-soft);border-radius:999px;width:30px;height:30px;cursor:pointer;font-size:15px;line-height:1;flex:none}
+.eyebrow{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ochre)}
+h1{font-family:var(--display);font-weight:300;font-size:31px;line-height:1.05;margin:4px 0 0;text-wrap:balance}
+h1 em{font-style:italic;color:var(--glow)}
+.intro{font-family:var(--display);font-style:italic;font-weight:300;font-size:15px;line-height:1.4;color:var(--ink-soft);margin:-6px 0 0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:500 12px var(--body);color:var(--ink);background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:999px;padding:6px 10px;cursor:pointer;transition:background .2s,border-color .2s}
+.chip:hover{border-color:var(--ivory)}
+.chip[aria-pressed="true"]{background:var(--ivory);color:var(--night);border-color:var(--ivory)}
+.chip:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+.card{border-top:1px solid var(--line);padding-top:12px}
+.card h2{font-family:var(--display);font-weight:500;font-size:20px;margin:0 0 8px}
+.card p{font-size:13.5px;line-height:1.55;margin:0 0 8px}
+.card p.note{font-family:var(--display);font-style:italic;color:var(--glow);font-size:14.5px}
+.card .formula{font-size:12.5px;letter-spacing:.04em;color:var(--ochre)}
+.sect-title{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ochre);margin:0 0 8px}
+.voce,.tools{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:8px}
+select{width:100%;font:13.5px var(--body);color:var(--ink);background:rgba(20,16,13,.7);border:1px solid var(--line);border-radius:8px;padding:8px}
+.btn{font:600 12.5px var(--body);color:var(--night);background:var(--glow);border:0;border-radius:8px;padding:8px 13px;cursor:pointer}
+.btn.ghost{background:rgba(255,255,255,.03);color:var(--ink);border:1px solid var(--line)}
+.btn.ghost[aria-pressed="true"]{border-color:var(--glow);color:var(--glow)}
+.row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.steps li{font-size:12.5px;line-height:1.4;color:var(--ink-soft);opacity:.3;transition:opacity .5s}
+.steps li.on{opacity:1}
+.steps li b{color:var(--ivory);font-weight:600}
+.steps li.dest b{color:var(--glow)}
+label.slider{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink-soft)}
+input[type=range]{width:100%;accent-color:var(--sea)}
+.foot{font-size:10.5px;color:var(--ochre);letter-spacing:.04em;line-height:1.5}
+.labels{position:fixed;inset:0;pointer-events:none}
+.lab{position:absolute;transform:translate(-50%,-100%);font:500 11.5px var(--body);letter-spacing:.06em;color:var(--ink);background:rgba(13,11,10,.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border:1px solid var(--line);border-radius:999px;padding:3px 9px;white-space:nowrap;pointer-events:auto;cursor:pointer;transition:opacity .3s}
+.lab.small{font-size:10.5px;padding:2px 7px}
+.lab:hover{border-color:var(--glow);color:var(--glow)}
+.labels.off .lab{opacity:0;pointer-events:none}
+.title-card{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;pointer-events:none;opacity:0;transition:opacity 1.8s}
+.title-card.on{opacity:1}
+.title-card .t1{font-family:var(--display);font-weight:300;font-size:clamp(44px,9vw,104px);letter-spacing:.2em;color:var(--ink)}
+.title-card .t2{font-family:var(--display);font-style:italic;font-weight:300;font-size:clamp(17px,2.6vw,26px);color:var(--glow)}
+.exit{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.qtag{position:fixed;transform:translate(-50%,-100%);font-family:var(--display);font-style:italic;font-size:17px;color:var(--glow);pointer-events:none;opacity:0;transition:opacity .5s;text-shadow:0 1px 10px #000;white-space:nowrap}
+.qtag.on{opacity:1}
+.htag{font-size:15px;transition:opacity .2s}
+/* pannello di regolazione: in basso a destra, nascosto nell'anteprima e nel percorso */
+body .lil-gui.lil-auto-place{top:auto;bottom:calc(16px + env(safe-area-inset-bottom,0px));right:calc(16px + env(safe-area-inset-right,0px));max-height:70vh;--background-color:rgba(18,15,13,.82);--title-background-color:rgba(28,23,20,.9);--widget-color:rgba(236,220,192,.12);--hover-color:rgba(236,220,192,.2);--focus-color:rgba(236,220,192,.28);--number-color:#3c9e9a;--string-color:#f4c56e;--font-family:"Instrument Sans",system-ui,sans-serif;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.cine .lil-gui,.touring .lil-gui,.flat .lil-gui{display:none}
+/* Caricamento: l'edificio si costruisce a tappe, e la pagina lo dice */
+.loader{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;background:radial-gradient(ellipse at 50% 60%,#2a2140 0%,#141020 55%,var(--night) 100%);transition:opacity 1.2s}
+.loader.done{opacity:0;pointer-events:none}
+.loader .t1{font-family:var(--display);font-weight:300;font-size:clamp(36px,8vw,72px);letter-spacing:.2em;color:var(--ink)}
+.loader .t2{font-family:var(--display);font-style:italic;font-weight:300;font-size:clamp(15px,2.2vw,20px);color:var(--glow)}
+.lbar{width:min(260px,70vw);height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:14px}
+.lbar span{display:block;height:100%;background:var(--glow);transform:scaleX(.02);transform-origin:left;transition:transform .5s}
+.lmsg{font-size:12.5px;letter-spacing:.06em;color:var(--ink-soft);min-height:1.4em;max-width:420px;line-height:1.5}
+.loader.fail .lbar{display:none}
+.lact{display:flex;gap:8px;margin-top:6px}
+.lact[hidden]{display:none}
+/* Senza 3D: restano il quaderno e i testi */
+.flat #scene,.flat .labels,.flat .voce,.flat .tools > :not(.foot){display:none}
+/* Percorso con lo scorrimento */
+.tourbar{position:fixed;right:calc(18px + env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);display:none;flex-direction:column;gap:9px;z-index:4}
+.touring .tourbar{display:flex}
+.tdot{width:11px;height:11px;padding:0;border-radius:50%;border:1px solid var(--ivory);background:rgba(13,11,10,.4);cursor:pointer;transition:background .3s,transform .3s}
+.tdot[aria-current="true"]{background:var(--glow);border-color:var(--glow);transform:scale(1.35)}
+.tourhint{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);font-size:11.5px;letter-spacing:.06em;color:var(--ink-soft);background:rgba(13,11,10,.45);border:1px solid var(--line);border-radius:999px;padding:5px 12px;white-space:nowrap;display:none;pointer-events:none}
+.touring .tourhint{display:block}
+.exit.top{top:calc(14px + env(safe-area-inset-top,0px));bottom:auto}
+@media (max-width:640px){
+  body .lil-gui.lil-auto-place{top:calc(14px + env(safe-area-inset-top,0px));bottom:auto;right:calc(14px + env(safe-area-inset-right,0px));max-height:45vh}
+  .tourbar{flex-direction:row;gap:7px;top:calc(25px + env(safe-area-inset-top,0px));transform:none;left:calc(14px + env(safe-area-inset-left,0px));right:auto}
+  .exit.top{right:calc(14px + env(safe-area-inset-right,0px))}
+  .tourhint{bottom:auto;top:calc(58px + env(safe-area-inset-top,0px));left:calc(14px + env(safe-area-inset-left,0px));transform:none;white-space:normal;max-width:calc(100% - 28px);font-size:11px}
+  .panel{top:auto;bottom:calc(10px + env(safe-area-inset-bottom,0px));left:calc(10px + env(safe-area-inset-left,0px));right:calc(10px + env(safe-area-inset-right,0px));width:auto;max-height:44%;padding:14px}
+  .panel.closed{transform:translateY(calc(100% + 30px))}
+  .toggle{top:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+  h1{font-size:24px}
+}
+@media (prefers-reduced-motion:reduce){.panel,.title-card,.lab,.steps li,.toggle,.loader,.lbar span,.tdot{transition:none}}
+</style>
+</head>
+<body>
+
+<canvas id="scene" aria-label="Modello tridimensionale esplorabile dell'edificio del Modulo 1"></canvas>
+<div class="labels" id="labels"></div>
+<div class="qtag" id="qtag"></div>
+<div class="qtag htag" id="htag" aria-hidden="true"></div>
+<button class="toggle" id="openPanel">Apri il quaderno</button>
+<nav class="tourbar" id="tourBar" aria-label="Tappe del percorso"></nav>
+<div class="tourhint">Scorri o trascina per attraversare · frecce ↑ ↓ · Esc per uscire</div>
+<button class="btn ghost exit top" id="exitTour" hidden>Esci dal percorso</button>
+
+<aside class="panel" id="panel">
+  <div class="head">
+    <div>
+      <div class="eyebrow">KOINEME · Modulo 1 · La Soglia</div>
+      <h1>L'edificio <em>vivente</em></h1>
+    </div>
+    <button class="close" id="closePanel" aria-label="Chiudi il quaderno">✕</button>
+  </div>
+  <p class="intro">Quello che abbiamo attraversato ha una forma, e ogni spazio ha un nome.</p>
+
+  <div>
+    <div class="sect-title">Attraversa</div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="card" id="card" aria-live="polite"></div>
+
+  <div class="voce">
+    <div class="sect-title">Una voce attraversa la Soglia</div>
+    <select id="voceSel" aria-label="Scegli una voce"></select>
+    <div class="row"><button class="btn" id="voceGo">Falla entrare</button></div>
+    <ol class="steps" id="steps"></ol>
+  </div>
+
+  <div class="tools">
+    <div class="sect-title">Il piano di sotto</div>
+    <label class="slider" for="quota">La linea di base · la quota
+      <input type="range" id="quota" min="0" max="1" step="0.01" value="0.5">
+    </label>
+    <label class="slider" for="ampiezza">L'ampiezza
+      <input type="range" id="ampiezza" min="0" max="1" step="0.01" value="0.5">
+    </label>
+    <div class="row">
+      <button class="btn ghost" id="sound" aria-pressed="false">Suono</button>
+      <button class="btn ghost" id="voice" aria-pressed="true">Voce guida</button>
+      <button class="btn ghost" id="toggleNames" aria-pressed="true">Nomi</button>
+    </div>
+    <div class="row"><button class="btn ghost" id="tour" aria-pressed="false">Percorso con lo scorrimento</button><button class="btn ghost" id="trailer">Anteprima per l'incontro</button></div>
+    <div class="foot">Prototipo, quinta versione rifondata (three.js 0.187) · 2 novembre 2026<br>Trascina per girare, rotella o pizzico per avvicinarti, tocca uno spazio per entrarci</div>
+  </div>
+</aside>
+
+<div class="title-card" id="titleCard"><div class="t1">KOINEME</div><div class="t2">Modulo 1 · La Soglia</div></div>
+<button class="btn ghost exit" id="exitTrailer" hidden>Esci dall'anteprima</button>
+
+<div class="loader" id="loader" role="status" aria-live="polite">
+  <div class="t1">KOINEME</div>
+  <div class="t2">Modulo 1 · La Soglia</div>
+  <div class="lbar" aria-hidden="true"><span id="loadBar"></span></div>
+  <div class="lmsg" id="loadMsg">Preparo l'edificio</div>
+  <div class="lact" id="loadAct" hidden><button class="btn ghost" id="loadRead">Leggi gli spazi</button><button class="btn" id="loadRetry">Ricarica</button></div>
+</div>
+
+<script type="module" src="./main.js"></script>
+</body>
+</html>

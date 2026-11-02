@@ -1,0 +1,22 @@
+import { defineConfig } from 'vite';
+import { resolve } from 'node:path';
+
+// Più pagine nello stesso sito: la scena di base e le versioni dell'edificio.
+// base './' perché il sito funzioni anche in una sottocartella (GitHub Pages).
+export default defineConfig({
+  base: './',
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      input: {
+        main: resolve(import.meta.dirname, 'index.html'),
+        modulo1: resolve(import.meta.dirname, 'modulo-1/index.html'),
+        modulo1v5: resolve(import.meta.dirname, 'modulo-1-v5/index.html'),
+        modulo1v5x: resolve(import.meta.dirname, 'modulo-1-v5x/index.html'),
+      },
+      // three.js in un file a sé: resta in cache tra una pagina e l'altra
+      output: { manualChunks: (id) => (id.includes('node_modules/three') ? 'three' : undefined) },
+    },
+    chunkSizeWarningLimit: 700,
+  },
+});
