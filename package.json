@@ -1,0 +1,11 @@
+{
+  "name": "koineme-architettura",
+  "version": "0.5.0",
+  "private": true,
+  "description": "L'edificio vivente del programma KOINEME: modello tridimensionale esplorabile del Modulo 1",
+  "type": "module",
+  "dependencies": {
+    "lil-gui": "^0.21.0",
+    "three": "^0.187.0"
+  }
+}
