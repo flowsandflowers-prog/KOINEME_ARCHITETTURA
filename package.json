@@ -14,6 +14,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "testi": "node scripts/verifica-testi.mjs",
+    "copione": "node scripts/copione.mjs"
   }
 }
