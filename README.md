@@ -32,3 +32,7 @@ npm run preview  # prova di dist/ in locale
 
 `modulo-1/` e `modulo-1-v5/` continuano a funzionare anche aperte direttamente, senza build.
 
+### Pubblicazione
+
+Il workflow `.github/workflows/pages.yml` costruisce il sito a ogni pull request verso `main` (solo controllo) e lo pubblica su GitHub Pages a ogni aggiornamento di `main`. Va attivato una volta: *Settings → Pages → Build and deployment → Source: GitHub Actions*.
+
