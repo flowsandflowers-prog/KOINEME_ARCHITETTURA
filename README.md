@@ -10,6 +10,25 @@ L'edificio vivente del programma KOINEME: un modello tridimensionale esplorabile
 
 I testi degli spazi sono quelli della regia del Modulo 1, blocco 8.
 
+- `modulo-1-v5x/` · la quinta versione rifondata su three.js 0.187 (da npm, non più da CDN): `index.html` più `main.js`. Pietre, gradini, nodi e capitelli ripetuti sono InstancedMesh; un solo sole proietta l'ombra, con una mappa piccola; il cono di luce del pozzo è cotto in una texture; il loop non crea oggetti nuovi; alla chiusura della pagina tutto viene liberato. Gli spazi rispondono al puntatore e al tocco (nome al passaggio, clic per entrare) e un pannello *Regolazioni* (lil-gui) regola luci, ombre, nebbia, piano di sotto e risoluzione. Con `?debug` nell'indirizzo espone `window.__koineme` per misurare il renderer.
+- `index.html` e `src/main.js` · la scena di base del progetto: tre archi di pietra, uno per versione; si attraversano con un tocco.
+- `src/lib/` · i moduli condivisi: `dispose.js` (liberare geometrie, materiali e texture) e `picker.js` (un solo Raycaster, eventi pointer, raggio limitato a `objectsToIntersect`).
+- `.claude/skills/` · le regole che Claude segue in questo progetto: `3d-web-experience`, `frontend-design`, `threejs-performance`, `threejs-interaction`.
+
 ## Come si apre
 
 È una sola pagina web. Si apre in un browser, oppure, con GitHub Pages attivo, a un indirizzo pubblico.
+
+### Con le librerie npm (scena di base e v5x)
+
+Serve Node 20 o più recente.
+
+```bash
+npm install
+npm run dev      # sviluppo, con ricarica automatica
+npm run build    # sito completo in dist/, da pubblicare
+npm run preview  # prova di dist/ in locale
+```
+
+`modulo-1/` e `modulo-1-v5/` continuano a funzionare anche aperte direttamente, senza build.
+

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KOINEME · Architettura</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Stessa materia dei moduli: crepuscolo, pietra avorio, luce d'oro */
+:root{
+  --night:#0d0b0a;
+  --ink:#f1e7d6;
+  --ink-soft:#c9bba4;
+  --ochre:#c79a5b;
+  --glow:#f4c56e;
+  --line:rgba(236,220,192,.18);
+  --display:"Fraunces",Georgia,"Times New Roman",serif;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0;background:var(--night);color:var(--ink);font-family:var(--body)}
+body{overflow:hidden}
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;opacity:0;transition:opacity 1.6s}
+#scene.on{opacity:1}
+.intro{position:fixed;left:calc(28px + env(safe-area-inset-left,0px));bottom:calc(28px + env(safe-area-inset-bottom,0px));width:min(380px,calc(100% - 56px));display:flex;flex-direction:column;gap:14px}
+h1{margin:0;font-family:var(--display);font-weight:300;font-size:clamp(34px,5vw,52px);letter-spacing:.2em;line-height:1}
+.lead{margin:0;font-family:var(--display);font-style:italic;font-weight:300;font-size:17px;line-height:1.45;color:var(--ink-soft)}
+.soglie{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.soglie a{display:block;padding:11px 2px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none;transition:color .25s}
+.soglie a b{display:block;font-family:var(--display);font-weight:500;font-size:19px}
+.soglie a span{display:block;font-size:13px;line-height:1.45;color:var(--ink-soft);margin-top:2px}
+.soglie a:hover,.soglie a:focus-visible,.soglie a.hot{color:var(--glow)}
+.soglie a:focus-visible{outline:2px solid var(--glow);outline-offset:3px;border-radius:2px}
+.hint{font-size:12px;color:var(--ochre);margin:0}
+.flat .hint{display:none}
+@media (max-width:640px){
+  .intro{left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:auto;gap:10px}
+  .lead{font-size:15px}
+  .soglie a{padding:9px 2px}
+  .soglie a b{font-size:17px}
+}
+@media (prefers-reduced-motion:reduce){#scene,.soglie a{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="scene" aria-hidden="true"></canvas>
+<main class="intro">
+  <h1>KOINEME</h1>
+  <p class="lead">L'edificio vivente del programma. Ogni soglia porta a una versione del Modulo 1.</p>
+  <ul class="soglie">
+    <li><a href="modulo-1/" data-soglia="0"><b>La Soglia, quarta versione</b><span>Il prototipo da cui è nato tutto.</span></a></li>
+    <li><a href="modulo-1-v5/" data-soglia="1"><b>Quinta versione</b><span>Caricamento a tappe e percorso con lo scorrimento.</span></a></li>
+    <li><a href="modulo-1-v5x/" data-soglia="2"><b>Quinta versione, rifondata</b><span>Spazi che rispondono al tocco e pannello per regolare luci, nebbia e piano di sotto.</span></a></li>
+  </ul>
+  <p class="hint">Tocca un arco per attraversarlo.</p>
+</main>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
