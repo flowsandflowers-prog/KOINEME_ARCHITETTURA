@@ -9,6 +9,7 @@ Stato: prima versione navigabile del modello (`index.html`, `main.js`, `mondo.js
 | `COPIONE.md` | Il copione della voce narrante da registrare: 58 pezzi, ognuno con il nome del file. Si genera da `testi.js`. |
 | `index.html`, `main.js`, `mondo.js` | Il modello: due modi (Racconta, Attraversa), gli spazi con i testi, le tredici voci dello Smistamento, il piano di sotto con quota, ampiezza, valenza, attivazione e i quattro appoggi. |
 | `../public/soglia/voce/` | Le registrazioni della voce narrante: un file per pezzo del copione, e il suo nome in `elenco.json`. Finché un file manca, legge la voce sintetica. |
+| `../public/soglia/modelli/xbot.glb` | Il personaggio animato: «X Bot» di Mixamo, preso dagli esempi ufficiali di three.js (r171), con le animazioni di camminata e di attesa. |
 | `studio/` | Gli studi visivi e le immagini in `studio/immagini/`. |
 
 Comandi:

@@ -9,6 +9,9 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { createPicker } from '../src/lib/picker.js';
 import { disposeObject } from '../src/lib/dispose.js';
 import { SPAZI, ORDINE, ETICHETTE, DOMANDE, DOVE_VA, VOCI, STANZE_CHIUSE, INTERFACCIA, RACCORDI, MEZZANINO_SPIEGAZIONE } from './testi.js';
@@ -96,20 +99,33 @@ async function start() {
     g.computeVertexNormals(); return g;
   })();
   const glowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(235,242,255,0.9)'); gr.addColorStop(0.35, 'rgba(210,225,255,0.3)'); gr.addColorStop(1, 'rgba(200,215,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
-  const darkM = new THREE.MeshStandardMaterial({ color: 0x1b1916, roughness: 0.95 });
+  const darkM = new THREE.MeshStandardMaterial({ color: 0x1b1916, roughness: 0.6, metalness: 0.1 });
   const litM = new THREE.MeshStandardMaterial({ color: 0x9aa6b8, roughness: 0.6, emissive: 0xeef3ff, emissiveIntensity: 0.75 });
+  // il personaggio: X Bot dagli esempi di three.js (Mixamo), con le sue animazioni di camminata e di attesa
+  const bot = await new GLTFLoader().loadAsync('modelli/xbot.glb').catch(() => null);
+  const FIG = [];
   function figura(lit) {
-    const g = new THREE.Group(); const m = new THREE.Mesh(mantoG, lit ? litM : darkM); m.castShadow = true; g.add(m);
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: lit ? 0.8 : 0 })); glow.scale.set(3.2, 4.2, 1); glow.position.y = 1.05; g.add(glow);
+    const g = new THREE.Group(); const meshes = []; let mixer = null, act = {};
+    if (bot) {
+      const m = SkeletonUtils.clone(bot.scene); m.traverse((o) => { if (o.isMesh) { o.material = lit ? litM : darkM; o.castShadow = true; meshes.push(o); } }); g.add(m);
+      mixer = new THREE.AnimationMixer(m); for (const c of bot.animations) act[c.name] = mixer.clipAction(c);
+      if (act.idle) act.idle.play();
+    } else { const m = new THREE.Mesh(mantoG, lit ? litM : darkM); m.castShadow = true; g.add(m); meshes.push(m); }
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: lit ? 0.6 : 0 })); glow.scale.set(3.2, 4.2, 1); glow.position.y = 1.0; g.add(glow);
     const l = new THREE.PointLight(0xe4ecff, lit ? 5 : 0, 12, 2); l.position.y = 1.2; g.add(l);
-    g.userData = { b: m, h: m, l, glow, set(on) { m.material = on ? litM : darkM; l.intensity = on ? 5 : 0; glow.material.opacity = on ? 0.8 : 0; } };
-    scene.add(g); return g;
+    let passo = false;
+    g.userData = { meshes, l, glow, mixer,
+      set(on) { for (const m of meshes) m.material = on ? litM : darkM; l.intensity = on ? 5 : 0; glow.material.opacity = on ? 0.6 : 0; },
+      // camminare o stare: dissolvenza fra le due animazioni; la velocità del passo segue quella del corpo
+      cammina(on, vel = 1.6) { if (!act.walk || on === passo) { if (act.walk && on) act.walk.timeScale = vel / 1.6; return; } passo = on; const a = on ? act.walk : act.idle, b = on ? act.idle : act.walk; a.reset().play(); a.timeScale = on ? vel / 1.6 : 1; a.crossFadeFrom(b, 0.35, false); } };
+    scene.add(g); FIG.push(g); return g;
   }
   const attesa = [figura(false), figura(false)], passato = figura(true), VF = figura(false), RUM = figura(false);
-  // la figura dello Smistamento: la stoffa si illumina da dentro, piano
-  const vfM = new THREE.MeshStandardMaterial({ color: 0x1b1916, roughness: 0.8, emissive: 0xeef3ff, emissiveIntensity: 0 }); let accesa = 0, accesaT = 0;
+  // la figura dello Smistamento: si illumina da dentro, piano
+  const vfM = new THREE.MeshStandardMaterial({ color: 0x1b1916, roughness: 0.6, metalness: 0.1, emissive: 0xeef3ff, emissiveIntensity: 0 }); let accesa = 0, accesaT = 0;
   const DARK = new THREE.Color(0x1b1916), LIGHT = new THREE.Color(0x9aa6b8);
-  VF.userData.set = (on) => { VF.userData.b.material = vfM; accesaT = on ? 1 : 0; if (!on) accesa = 0; };
+  VF.userData.set = (on) => { for (const m of VF.userData.meshes) m.material = vfM; accesaT = on ? 1 : 0; if (!on) accesa = 0; };
+  RUM.userData.cammina(true, 1.2);
   VF.visible = false; RUM.visible = false;
 
   /* ---------- le inquadrature del racconto ---------- */
@@ -125,7 +141,7 @@ async function start() {
   const tmpA = V(0, 0, 0), tmpB = V(0, 0, 0), tmpC = V(0, 0, 0), RDIR = V(0, 0, 0);
   const off = (f) => (f === 's' ? ST.liv : 0);
   let fly = null;
-  function flyTo(k, dur = 4) { const r = RAC[k]; if (!r) return; controls.autoRotate = false; fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: V(r[0][0], r[0][1] + off(r[2]), r[0][2]), t1: V(r[1][0], r[1][1] + off(r[2]), r[1][2]), s: performance.now(), d: dur * 1000 }; }
+  function flyTo(k, dur = 3) { const r = RAC[k]; if (!r) return; controls.autoRotate = false; fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: V(r[0][0], r[0][1] + off(r[2]), r[0][2]), t1: V(r[1][0], r[1][1] + off(r[2]), r[1][2]), s: performance.now(), d: dur * 1000 }; }
   const ease = (t) => t * t * t * (t * (t * 6 - 15) + 10); // smootherstep: parte e arriva piano
 
   /* ---------- la voce narrante: i tuoi file, se ci sono; altrimenti la voce sintetica ---------- */
@@ -217,7 +233,7 @@ async function start() {
   const qtag = $('qtag'), stepsEl = $('steps'), domEl = $('domanda');
   const pausa = (ms) => new Promise((r) => setTimeout(r, REDUCE ? ms / 3 : ms));
   function domanda(q, r) { if (!q) { domEl.classList.remove('on', 'risposta'); return; } $('dq').textContent = q; $('dr').textContent = r || ''; domEl.classList.add('on'); domEl.classList.toggle('risposta', !!r); }
-  const fessureT = [0, 0, 0], tremula = [false, false, false]; let segui = null;
+  const fessureT = [0, 0, 0], tremula = [false, false, false]; let segui = null, allinea3T = 0;
   // un'inquadratura: stacco netto su p0/t0, poi un movimento lento fino a p1/t1
   function taglio(p0, t0, p1, t1, dur) { fly = { p0, t0, p1, t1, s: performance.now(), d: dur * 1000 }; camera.position.copy(p0); controls.target.copy(t0); }
   // la lama risponde alla risposta: sì accesa, no spenta, in parte tremula
@@ -232,28 +248,30 @@ async function start() {
     stepsEl.replaceChildren(); const li = [];
     DOMANDE.forEach((d, i) => { const e = document.createElement('li'); const b = document.createElement('b'); b.textContent = d + ' '; e.append(b, v.risposte[i]); stepsEl.appendChild(e); li.push(e); });
     { const e = document.createElement('li'); const b = document.createElement('b'); b.textContent = DOVE_VA + ' '; e.append(b, v.doveVa); stepsEl.appendChild(e); li.push(e); }
-    const X = W.SOGLIA_X, Lv = () => ST.liv;
-    mark('soglia'); VF.visible = true; VF.userData.set(false); VF.position.set(X[0] - 12, Q + Lv(), 0); VF.rotation.y = Math.PI / 2; tremula.fill(false);
-    // primo passaggio: la camera sull'asse, bassa, dietro la figura
-    taglio(V(X[0] - 24, Q + Lv() + 2.0, 0.3), V(X[0], Q + Lv() + 4.5, 0), V(X[0] - 18, Q + Lv() + 1.8, 0.2), V(X[0], Q + Lv() + 4.2, 0), 10);
-    say('voce-entra', RACCORDI.voceEntra).then(() => { if (id === runId) say(`voce-${String(v.n).padStart(2, '0')}`, v.voce); });
-    await pausa(2200); if (id !== runId) return;
-    // secondo: dall'alto e di lato. Terzo: oltre la fessura, rivolta indietro, verso chi ne esce
-    const inquadra = [null,
-      () => taglio(V(X[1] - 34, Q + Lv() + 64, 52), V(X[1] + 2, Q + Lv() + 2, 0), V(X[1] - 26, Q + Lv() + 60, 46), V(X[1] + 4, Q + Lv() + 2, 0), 9),
-      () => taglio(V(X[2] + 16, Q + Lv() + 2.3, 1.6), V(X[2], Q + Lv() + 2.8, 0), V(X[2] + 12, Q + Lv() + 2.0, 1.2), V(X[2], Q + Lv() + 2.6, 0), 9)];
-    for (let i = 0; i < 3; i++) {
-      const x = X[i];
-      if (inquadra[i]) inquadra[i]();
-      li[i].classList.add('on'); domanda(DOMANDE[i], null);
-      await Promise.all([cammina([P(x - 2.6, Q, 0)], i === 0 ? 2.6 : 4.2), i === 0 ? pausa(0) : (zitto(), say(`domanda-${i + 1}`, DOMANDE[i]))]); if (id !== runId) return;
-      if (i === 0) { zitto(); await say('domanda-1', DOMANDE[0]); if (id !== runId) return; }
-      domanda(DOMANDE[i], v.risposte[i]); lama(i, v.risposte[i]);
-      await Promise.all([cammina([P(x + 4, Q, 0)], 2.4), say(`risposta-${slug(v.risposte[i])}`, v.risposte[i])]); if (id !== runId) return;
-      domanda(null);
-    }
-    VF.userData.set(true); // fuori dalla terza fessura la figura si accende
-    li[3].classList.add('on'); await cammina([P(X[2] + 9, Q, 0)], 1.6); await pausa(1200); if (id !== runId) return;
+    const X = W.SOGLIA_X, Lv = () => ST.liv, r = v.risposte;
+    mark('soglia'); VF.visible = true; VF.userData.set(false); VF.position.set(X[0] - 9, Q + Lv(), 0); VF.rotation.y = Math.PI / 2; tremula.fill(false); allinea3T = 0;
+    say(`voce-${String(v.n).padStart(2, '0')}`, v.voce); // la voce parla mentre la figura cammina: nessuna attesa
+    // 1 · Riguarda che cosa? Sull'asse, dietro la figura: la lama si accende
+    taglio(V(X[0] - 20, Q + Lv() + 1.9, 0.3), V(X[0], Q + Lv() + 4.2, 0), V(X[0] - 15, Q + Lv() + 1.8, 0.2), V(X[0], Q + Lv() + 4, 0), 5);
+    li[0].classList.add('on'); domanda(DOMANDE[0], null);
+    await cammina([P(X[0] - 1.6, Q, 0)], 3.2); if (id !== runId) return;
+    domanda(DOMANDE[0], r[0]); fessureT[0] = 1;
+    await cammina([P(X[0] + 3, Q, 0)], 3.2); if (id !== runId) return;
+    // 2 · Valutazione di rilevanza? Dall'alto: la lama risponde (sì accesa, no spenta, in parte tremula)
+    taglio(V(X[1] - 30, Q + Lv() + 58, 46), V(X[1] + 2, Q + Lv() + 2, 0), V(X[1] - 24, Q + Lv() + 55, 41), V(X[1] + 4, Q + Lv() + 2, 0), 5);
+    li[1].classList.add('on'); domanda(DOMANDE[1], null);
+    await cammina([P(X[1] - 1.6, Q, 0)], 4.2); if (id !== runId) return;
+    domanda(DOMANDE[1], r[1]); lama(1, r[1]);
+    await cammina([P(X[1] + 3, Q, 0)], 3.6); if (id !== runId) return;
+    // 3 · Si muovono insieme? Oltre la fessura, rivolta indietro: le due metà del monolite scorrono fino ad allinearsi
+    taglio(V(X[2] + 14, Q + Lv() + 2.2, 1.4), V(X[2], Q + Lv() + 3, 0), V(X[2] + 11, Q + Lv() + 2, 1.1), V(X[2], Q + Lv() + 2.8, 0), 5);
+    li[2].classList.add('on'); domanda(DOMANDE[2], null);
+    await cammina([P(X[2] - 2.4, Q, 0)], 4.2); if (id !== runId) return;
+    domanda(DOMANDE[2], r[2]); allinea3T = /^sì/.test(r[2]) ? 1 : /^in parte/.test(r[2]) ? 0.5 : 0; lama(2, r[2]);
+    await pausa(700); if (id !== runId) return;
+    await cammina([P(X[2] + 6, Q, 0)], 2.6); if (id !== runId) return;
+    VF.userData.set(true); domanda(null); li[3].classList.add('on'); // fuori dalla terza fessura la figura si accende
+    await pausa(900); if (id !== runId) return;
     tremula.fill(false); fessureT.fill(0);
     const N0 = W.NECK0, s = v.spazio, neck = (t) => { const p = W.NECK.getPointAt(t); return P(p.x, Q, p.z); };
     const strada = {
@@ -268,10 +286,9 @@ async function start() {
     if (s === 'struttura') { strutturaT = 1; flyTo('struttura', 5); await say('voce-struttura', RACCORDI.voceStruttura); }
     else {
       if (s === 'stanza') allineaT = 1; // le componenti si allineano: la porta si apre
-      flyTo(s === 'fondamenta' ? 'sotto' : s, 4.5);
-      await cammina(strada, 6); if (id !== runId) return;
-      if (s === 'fondamenta') flyTo('fondamenta', 3.5);
-      await pausa(800);
+      flyTo(s === 'fondamenta' ? 'sotto' : s, 3);
+      await cammina(strada, 7); if (id !== runId) return;
+      if (s === 'fondamenta') flyTo('fondamenta', 2.5);
       await say('voce-arriva', RACCORDI.voceArriva);
     }
     if (id !== runId) return;
@@ -284,6 +301,7 @@ async function start() {
   /* ---------- post e dimensioni ---------- */
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
+  if (!LOW) { const ao = new GTAOPass(scene, camera, 1024, 1024); ao.updateGtaoMaterial({ radius: 2.5, distanceExponent: 1.5, thickness: 2, scale: 1.2 }); ao.blendIntensity = 0.85; composer.addPass(ao); }
   if (!LOW) composer.addPass(new UnrealBloomPass(new THREE.Vector2(1024, 1024), 0.42, 0.5, 0.78));
   composer.addPass(new OutputPass());
   // vignettatura e grana leggera: la luce si raccoglie al centro, l'immagine smette di essere piatta
@@ -309,13 +327,16 @@ async function start() {
     ST.allinea += (allineaT - ST.allinea) * k; ST.struttura += (strutturaT - ST.struttura) * k;
     for (let f = 0; f < 3; f++) ST.fessure[f] += (fessureT[f] - ST.fessure[f]) * (1 - Math.exp(-dt * 1.2));
     accesa += (accesaT - accesa) * (1 - Math.exp(-dt * 0.9)); vfM.emissiveIntensity = 0.75 * accesa; vfM.color.copy(DARK).lerp(LIGHT, accesa); VF.userData.l.intensity = 5 * accesa; VF.userData.glow.material.opacity = 0.45 * accesa;
+    ST.allinea3 += (allinea3T - ST.allinea3) * (1 - Math.exp(-dt * 2.2));
     for (let f = 0; f < 3; f++) if (tremula[f]) fessureT[f] = 0.45 + 0.45 * Math.sin(t * 7 + f);
     W.aggiorna(dt, t, ST);
     const L = ST.liv;
     // le figure in attesa, quella già passata, la ruminazione
     attesa[0].position.set(SX - 58, Q + L, 0.6); attesa[1].position.set(SX - 61, Q + L, -0.7);
     passato.position.set(SX + 70 + 8 * Math.sin(t * 0.08), Q + L, -0.8);
-    if (RUM.visible) { const u = 0.44 + 0.08 * (0.5 - 0.5 * Math.cos(t * 0.5)); W.CORR.getPoint(u, tmpA); RUM.position.set(tmpA.x, tmpA.y + L, tmpA.z); }
+    if (RUM.visible) { const ph = t * 0.25, u = 0.44 + 0.08 * (0.5 - 0.5 * Math.cos(ph)); W.CORR.getPoint(u, tmpA); W.CORR.getTangent(u, tmpB); const dir = Math.sin(ph) >= 0 ? 1 : -1; RUM.position.set(tmpA.x, tmpA.y + L, tmpA.z); RUM.rotation.y = Math.atan2(tmpB.x * dir, tmpB.z * dir); }
+    VF.userData.cammina(!!cammino, cammino ? cammino.vel : 1.6);
+    for (let f = 0; f < FIG.length; f++) if (FIG[f].userData.mixer && FIG[f].visible) FIG[f].userData.mixer.update(dt);
     // la voce che cammina
     if (cammino) {
       const c = cammino, pt = c.punti[c.i]; tmpA.copy(pt.v); tmpA.y += off(pt.f);
@@ -323,7 +344,7 @@ async function start() {
       if (d > 0.01) VF.rotation.y = Math.atan2(tmpB.x, tmpB.z);
       if (d <= stepLen) { VF.position.copy(tmpA); c.i++; if (c.i >= c.punti.length) { cammino = null; c.res(); } }
       else VF.position.addScaledVector(tmpB, stepLen / d);
-      VF.userData.b.position.y = 0.04 * Math.abs(Math.sin(t * 6.5)); VF.userData.b.rotation.z = 0.025 * Math.sin(t * 6.5);
+
     }
     // camera
     if (segui && VF.visible) {
