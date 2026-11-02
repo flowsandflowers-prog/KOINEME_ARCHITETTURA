@@ -82,10 +82,10 @@ export function costruisci(scene, { low = false } = {}) {
   const bladeTex = canvasTex(256, 64, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, 'rgba(250,244,232,0.95)'); gr.addColorStop(0.35, 'rgba(240,232,215,0.35)'); gr.addColorStop(1, 'rgba(235,225,205,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); const v = g.createLinearGradient(0, 0, 0, h); v.addColorStop(0, 'rgba(0,0,0,.7)'); v.addColorStop(0.15, 'rgba(0,0,0,0)'); v.addColorStop(0.85, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.7)'); g.globalCompositeOperation = 'destination-out'; g.fillStyle = v; g.fillRect(0, 0, w, h); });
   const bladeMat = (op) => new THREE.MeshBasicMaterial({ map: bladeTex, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
   const SOGLIA_X = [-20, 0, 20].map((d) => SX + d); // tutti e tre dentro il profilo della rupe
-  const lame = [];
+  const lame = [], META = []; // META: le due metà di ogni monolite (al terzo scorrono per allinearsi)
   SOGLIA_X.forEach((x) => {
     const H = 30, W = 24, slit = 1.3, half = (W - slit) / 2;
-    box(2.8, H, half, M.basalt, SOPRA, x, Q + H / 2, -(slit / 2 + half / 2)); box(2.8, H, half, M.basalt, SOPRA, x, Q + H / 2, slit / 2 + half / 2);
+    const a = box(2.8, H, half, M.basalt, SOPRA, x, Q + H / 2, -(slit / 2 + half / 2)), b = box(2.8, H, half, M.basalt, SOPRA, x, Q + H / 2, slit / 2 + half / 2); META.push([a, b]);
     const bl = new THREE.PlaneGeometry(20, H - 4); bl.translate(10, 0, 0); const m = add(new THREE.Mesh(bl, bladeMat(0.38)), SOPRA, x - 1.4, Q + (H - 4) / 2, 0); m.rotation.y = Math.PI;
     const f = add(new THREE.Mesh(new THREE.PlaneGeometry(20, 1.4), bladeMat(0.45)), SOPRA, x - 11.4, Q + 0.06, 0); f.rotation.x = -Math.PI / 2; f.scale.x = -1;
     lame.push(m, f);
@@ -147,11 +147,11 @@ export function costruisci(scene, { low = false } = {}) {
   // i quattro assi: fibre tese, chiare, fra le opposte
   for (let k = 0; k < 4; k++) { const a = OTTO[k], b = OTTO[k + 4], len = a.distanceTo(b) + 14, mid = a.clone().add(b).multiplyScalar(0.5); const m = add(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, len, 6), M.asse), SOPRA, mid.x, mid.y, mid.z); m.quaternion.setFromUnitVectors(V(0, 1, 0), b.clone().sub(a).normalize()); }
   // il corridoio: una galleria esterna che gira intorno a tutte le camere
-  const CORR = new THREE.CatmullRomCurve3([...Array(65)].map((_, i) => { const a = -Math.PI * 0.85 + (i / 64) * Math.PI * 2.1; return V(NC.x + Math.cos(a) * 34, Q + 4 + 12 * Math.sin((i / 64) * Math.PI) + 2 * Math.sin(a * 3), NC.z + Math.sin(a) * 30); }));
+  const CORR = new THREE.CatmullRomCurve3([...Array(65)].map((_, i) => { const a = -Math.PI * 0.85 + (i / 64) * Math.PI * 2.1; return V(NC.x + Math.cos(a) * 47, Q + 3 + 14 * Math.sin((i / 64) * Math.PI) + 2 * Math.sin(a * 3), NC.z + Math.sin(a) * 45); }));
   { const pos = [], idx = [], p = V(0, 0, 0), t = V(0, 0, 0), s = V(0, 0, 0), up = V(0, 1, 0);
     for (let i = 0; i <= 200; i++) { CORR.getPoint(i / 200, p); CORR.getTangent(i / 200, t); s.crossVectors(t, up).normalize().multiplyScalar(1.4); pos.push(p.x - s.x, p.y, p.z - s.z, p.x + s.x, p.y, p.z + s.z); if (i < 200) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); shade(add(new THREE.Mesh(g, M.corr), SOPRA)); }
-  box(10, 0.8, 2.6, M.basalt, SOPRA, NECK0.x + 4, Q - 0.4, -6);
+  box(12, 0.8, 2.6, M.basalt, SOPRA, NECK0.x - 4, Q - 0.4, -9);
   // il mezzanino: un ballatoio appeso alle nervature, a mezza quota dentro il nido
   const MZ = V(NC.x + 8, Q + 16, NC.z + 6);
   box(9, 0.6, 6, M.basalt, SOPRA, MZ.x, MZ.y, MZ.z);
@@ -187,7 +187,7 @@ export function costruisci(scene, { low = false } = {}) {
   const CORPO = OSSA.map((p) => [scene, p]);
 
   /* ---------- stato e aggiornamento (nessuna allocazione qui dentro) ---------- */
-  const S0 = { quota: 0.5, ampiezza: 0.5, valenza: 0.5, attivazione: 0.4, appoggi: [true, true, true, true], allinea: 0, struttura: 0, liv: 0, fessure: [0, 0, 0] };
+  const S0 = { quota: 0.5, ampiezza: 0.5, valenza: 0.5, attivazione: 0.4, appoggi: [true, true, true, true], allinea: 0, struttura: 0, liv: 0, fessure: [0, 0, 0], allinea3: 0 };
   const cold = new THREE.Color(0x3e5664), warmW = new THREE.Color(0x6b5a44), tmpC = new THREE.Color();
   let ripT = 0, porte = 0, liv = 0, fframe = 0;
   function aggiorna(dt, t, st) {
@@ -200,8 +200,8 @@ export function costruisci(scene, { low = false } = {}) {
     face.scale.y = Math.max(0.01, liv - 3 - FOND); face.position.y = liv - 3; menisco.position.y = liv - 3.12;
     motes.scale.y = Math.max(0.01, liv - 5 - FOND); motes.position.y = FOND + 1;
     // i tronchi: dalle fondamenta alla pellicola; quello tolto si ritira verso il basso
-    const span = Math.max(1, liv + 0.5 - FOND);
-    for (let i = 0; i < 4; i++) { const a = alberi[i]; a.trunk.scale.set(1, span * (0.25 + 0.75 * a.presente), 1); a.trunk.position.y = 0.5 - span * 0.75 * (1 - a.presente); }
+    const span = Math.max(1, liv - 0.4 - FOND);
+    for (let i = 0; i < 4; i++) { const a = alberi[i]; a.trunk.scale.set(1, span * (0.25 + 0.75 * a.presente), 1); a.trunk.position.y = -0.4 - span * 0.75 * (1 - a.presente); }
     // la pellicola: poggia sulle cime dei tronchi presenti; senza appoggio cede. L'ampiezza la allarga
     if ((fframe++ & 1) === 0) {
       const p = filmG.attributes.position.array, sc = 0.75 + 0.5 * st.ampiezza, sig2 = 2 * 30 * 30, amp = 0.35 * st.attivazione;
@@ -219,6 +219,8 @@ export function costruisci(scene, { low = false } = {}) {
     // valenza: il colore dell'acqua; attivazione: il moto della superficie e dei rami
     tmpC.copy(cold).lerp(warmW, st.valenza); waterMat.color.copy(tmpC); filmMat.color.copy(filmDeep).lerp(filmLight, st.valenza);
     ripT += dt * (0.02 + 0.18 * st.attivazione); ripple.offset.set(ripT, ripT * 0.6); waterMat.normalScale.set(0.2 + 0.6 * st.attivazione, 0.2 + 0.6 * st.attivazione);
+    // il terzo monolite: le due metà sfalsate scorrono fino ad allinearsi quando le componenti si muovono insieme
+    META[2][1].position.x = SOGLIA_X[2] + 2.6 * (1 - st.allinea3);
     // gli schermi dell'anticamera: sfalsati, o allineati (la porta si apre)
     for (let i = 0; i < 3; i++) { const s = schermi[i]; s.m.rotation.set(0, Math.PI / 2, s.sfalsa * (1 - st.allinea) + porte * 0.3 * Math.sin(t * 1.7 + i)); }
     // la stanza respira; gli anelli dei passi
