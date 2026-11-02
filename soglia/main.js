@@ -8,6 +8,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { createPicker } from '../src/lib/picker.js';
 import { disposeObject } from '../src/lib/dispose.js';
 import { SPAZI, ORDINE, ETICHETTE, DOMANDE, DOVE_VA, VOCI, STANZE_CHIUSE, INTERFACCIA, RACCORDI, MEZZANINO_SPIEGAZIONE } from './testi.js';
@@ -76,9 +77,10 @@ async function start() {
   scene.add(new THREE.Mesh(new THREE.SphereGeometry(4000, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false,
     vertexShader: 'varying float h;void main(){h=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
     fragmentShader: 'varying float h;void main(){vec3 a=vec3(.44,.43,.42);vec3 b=vec3(.78,.73,.64);gl_FragColor=vec4(mix(b,a,smoothstep(0.,.5,h)),1.);}' })));
-  scene.fog = new THREE.FogExp2(0xb8b0a2, 0.0013);
-  scene.add(new THREE.HemisphereLight(0xd8d2c6, 0x3e3a35, 0.75));
-  const sun = new THREE.DirectionalLight(0xf3e6d2, 2.6); sun.position.set(-180, 120, 140); scene.add(sun);
+  scene.fog = new THREE.FogExp2(0xb4ab9c, 0.0014);
+  scene.add(new THREE.HemisphereLight(0xd8d2c6, 0x34302b, 0.55));
+  // sole basso: ombre lunghe, più contrasto
+  const sun = new THREE.DirectionalLight(0xf6e4c8, 3.1); sun.position.set(-230, 80, 170); scene.add(sun);
   if (!LOW) { sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -240, right: 240, top: 180, bottom: -140, near: 10, far: 900 }); sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.5; }
   await step(0.25);
   const W = costruisci(scene, { low: LOW });
@@ -97,6 +99,9 @@ async function start() {
     b.castShadow = h.castShadow = true; scene.add(g); return g;
   }
   const attesa = [figura(false), figura(false)], passato = figura(true), VF = figura(false), RUM = figura(false);
+  // la figura dello Smistamento ha un materiale suo, che si accende piano
+  const vfM = new THREE.MeshStandardMaterial({ color: 0x121213, roughness: 0.9, emissive: 0xeef3ff, emissiveIntensity: 0 }); let accesa = 0, accesaT = 0;
+  VF.userData.set = (on) => { VF.userData.b.material = VF.userData.h.material = vfM; accesaT = on ? 1 : 0; if (!on) accesa = 0; };
   VF.visible = false; RUM.visible = false;
 
   /* ---------- le inquadrature del racconto ---------- */
@@ -106,14 +111,14 @@ async function start() {
     soglia: [[SX - 84, Q + 1.7, 1.0], [SX + 40, Q + 15, 0], 's'], vie: [[SX + 36, Q + 26, 80], [SX + 14, Q - 12, 8], 's'],
     stanza: [[NC.x - 7, Q + 6, NC.z + 7], [NC.x + 3, Q + 4, NC.z - 3], 's'], anticamera: [[GX - 66, Q + 2.4, 3.5], [GX - 42, Q + 2.2, -1.2], 's'],
     corridoio: [[GX - 20, Q + 34, 84], [GX, Q + 12, -4], 's'], mezzanino: [[W.MZ.x - 8, W.MZ.y + 4, W.MZ.z + 14], [W.MZ.x, W.MZ.y, W.MZ.z], 's'],
-    sotto: [[20, -4, 160], [20, -6, 0], 's'], fondamenta: [[10, FOND + 10, 140], [10, FOND + 2, 0], 'w'],
+    sotto: [[70, 36, 150], [40, -4, -30], 's'], fondamenta: [[10, FOND + 10, 140], [10, FOND + 2, 0], 'w'],
     struttura: [[GX - 50, Q + 230, 40], [GX - 50, Q, 0], 's'],
   };
   const tmpA = V(0, 0, 0), tmpB = V(0, 0, 0), tmpC = V(0, 0, 0), RDIR = V(0, 0, 0);
   const off = (f) => (f === 's' ? ST.liv : 0);
   let fly = null;
-  function flyTo(k, dur = 2.4) { const r = RAC[k]; if (!r) return; controls.autoRotate = false; fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: V(r[0][0], r[0][1] + off(r[2]), r[0][2]), t1: V(r[1][0], r[1][1] + off(r[2]), r[1][2]), s: performance.now(), d: dur * 1000 }; }
-  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  function flyTo(k, dur = 5.5) { const r = RAC[k]; if (!r) return; controls.autoRotate = false; fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: V(r[0][0], r[0][1] + off(r[2]), r[0][2]), t1: V(r[1][0], r[1][1] + off(r[2]), r[1][2]), s: performance.now(), d: dur * 1000 }; }
+  const ease = (t) => t * t * t * (t * (t * 6 - 15) + 10); // smootherstep: parte e arriva piano
 
   /* ---------- la voce narrante: i tuoi file, se ci sono; altrimenti la voce sintetica ---------- */
   let voiceOn = true, elenco = new Set(); const sub = $('sub');
@@ -173,8 +178,9 @@ async function start() {
 
   /* ---------- Attraversa: in prima persona, si avanza con lo scorrimento ---------- */
   const TOUR = [
-    ['edificio', [SX - 120, Q + 1.7, 0.3], [SX, Q + 8, 0], 's'], ['soglia', [SX - 56, Q + 1.7, 0.3], [SX + 10, Q + 12, 0], 's'],
-    ['vie', [SX + 16, Q + 1.7, 0.5], [GX - 52, Q + 3, 0], 's'], ['anticamera', [GX - 60, Q + 1.9, 0.2], [GX - 40, Q + 2.2, -1], 's'],
+    ['edificio', [SX - 120, Q + 1.7, 0.3], [SX, Q + 8, 0], 's'], ['soglia', [SX - 40, Q + 1.7, 0.3], [SX + 10, Q + 10, 0], 's'],
+    ['soglia', [SX - 29, Q + 1.7, 0], [SX + 10, Q + 11, 0], 's', 0], ['soglia', [SX - 9, Q + 1.7, 0], [SX + 30, Q + 11, 0], 's', 1], ['soglia', [SX + 11, Q + 1.7, 0], [SX + 50, Q + 11, 0], 's', 2],
+    ['vie', [SX + 34, Q + 1.7, 0.5], [GX - 52, Q + 3, 0], 's'], ['anticamera', [GX - 60, Q + 1.9, 0.2], [GX - 40, Q + 2.2, -1], 's'],
     ['stanza', [NC.x - 9, Q + 1.7, NC.z + 7], [NC.x + 4, Q + 12, NC.z - 4], 's'], ['mezzanino', [W.MZ.x - 2, W.MZ.y + 2, W.MZ.z], [NC.x - 8, Q + 8, NC.z - 6], 's'],
     ['corridoio', [GX - 22, Q + 13, 30], [GX + 24, Q + 12, 22], 's'], ['vie', [SX + 28, Q + 1.7, 21.8], [SX - 30, 0, 21.8], 's'],
     ['sotto', [SX - 36, 1.8, 30], [60, 1, -10], 's'], ['fondamenta', [20, FOND + 5, 46], [20, FOND + 1, 0], 'w'],
@@ -200,47 +206,53 @@ async function start() {
   window.addEventListener('keydown', (e) => { if (!tour || /^(SELECT|INPUT)$/.test(e.target.tagName)) return; const i = Math.round(tour.pt * NST); if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); tourGo(i + 1); } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); tourGo(i - 1); } else if (e.key === 'Escape') setMode('racconta'); });
 
   /* ---------- lo Smistamento: una voce attraversa i tre passaggi e arriva nel suo spazio ---------- */
-  const qtag = $('qtag'), stepsEl = $('steps');
+  const qtag = $('qtag'), stepsEl = $('steps'), domEl = $('domanda');
+  const pausa = (ms) => new Promise((r) => setTimeout(r, REDUCE ? ms / 3 : ms));
+  function domanda(q, r) { if (!q) { domEl.classList.remove('on', 'risposta'); return; } $('dq').textContent = q; $('dr').textContent = r || ''; domEl.classList.add('on'); domEl.classList.toggle('risposta', !!r); }
+  const fessureT = [0, 0, 0]; let segui = null;
   let runId = 0, cammino = null, qPos = null;
   const P = (x, y, z, f = 's') => ({ v: V(x, y, z), f });
-  function cammina(punti, vel = 9) { return new Promise((res) => { cammino = { punti, i: 0, vel, res }; }); }
+  function cammina(punti, vel = 3.2) { return new Promise((res) => { cammino = { punti, i: 0, vel, res }; }); }
   function mostra(html, p) { qtag.innerHTML = html; qPos = p; qtag.classList.add('on'); }
   async function smista(idx) {
     const id = ++runId; zitto(); if (mode !== 'racconta') setMode('racconta');
-    const v = VOCI[idx]; allineaT = 0; strutturaT = 0; RUM.visible = false;
+    const v = VOCI[idx]; allineaT = 0; strutturaT = 0; RUM.visible = false; segui = null; domanda(null); fessureT.fill(0);
     stepsEl.replaceChildren(); const li = [];
     DOMANDE.forEach((d, i) => { const e = document.createElement('li'); const b = document.createElement('b'); b.textContent = d + ' '; e.append(b, v.risposte[i]); stepsEl.appendChild(e); li.push(e); });
     { const e = document.createElement('li'); const b = document.createElement('b'); b.textContent = DOVE_VA + ' '; e.append(b, v.doveVa); stepsEl.appendChild(e); li.push(e); }
     mark('soglia'); VF.visible = true; VF.userData.set(false); VF.position.set(SX - 100, Q + ST.liv, 0);
-    flyTo('soglia', 2);
+    fly = null; segui = { dietro: V(-10, 2.4, 1.6), avanti: V(14, 2.8, 0) };
     await say('voce-entra', RACCORDI.voceEntra); if (id !== runId) return;
     await say(`voce-${String(v.n).padStart(2, '0')}`, v.voce); if (id !== runId) return;
     for (let i = 0; i < 3; i++) {
       const x = W.SOGLIA_X[i];
-      await cammina([P(x - 3, Q, 0), P(x + 0.5, Q, 0)]); if (id !== runId) return;
-      li[i].classList.add('on'); mostra(`${DOMANDE[i]}<i></i>`, P(x, Q + 3.5, 0)); qtag.querySelector('i').textContent = v.risposte[i];
-      await say(`domanda-${i + 1}`, DOMANDE[i]); if (id !== runId) return;
+      await cammina([P(x - 9, Q, 0), P(x - 3.2, Q, 0)]); if (id !== runId) return;
+      // davanti alla fessura: la lama si accende, compare la domanda, poi la risposta
+      fessureT[i] = 1; li[i].classList.add('on'); domanda(DOMANDE[i], null);
+      await pausa(1400); await say(`domanda-${i + 1}`, DOMANDE[i]); if (id !== runId) return;
+      domanda(DOMANDE[i], v.risposte[i]);
       await say(`risposta-${slug(v.risposte[i])}`, v.risposte[i]); if (id !== runId) return;
-      qtag.classList.remove('on');
+      await pausa(900);
+      await cammina([P(x + 3, Q, 0)], 2.2); if (id !== runId) return;
+      fessureT[i] = 0.25; domanda(null);
     }
-    VF.userData.set(true); // passata la Soglia, la figura si accende
-    li[3].classList.add('on');
+    VF.userData.set(true); // passata la Soglia, la figura si accende, piano
+    li[3].classList.add('on'); await pausa(2600); segui.dietro.set(-15, 6, 9); fessureT.fill(0);
     const N0 = W.NECK0, s = v.spazio, neck = (t) => { const p = W.NECK.getPointAt(t); return P(p.x, Q, p.z); };
     const strada = {
       stanza: [P(N0.x - 4, Q, 0), neck(0.15), neck(0.5), neck(0.95), P(NC.x - 6, Q, NC.z + 2)],
       anticamera: [P(N0.x - 4, Q, 0), neck(0.1)],
       corridoio: [P(N0.x - 4, Q, 0), P(N0.x + 4, Q, -6), ...[0.02, 0.1, 0.2, 0.3, 0.4, 0.5].map((t) => { const p = W.CORR.getPoint(t); return P(p.x, p.y, p.z); })],
       mezzanino: [P(N0.x - 4, Q, 0), neck(0.5), neck(0.95), P(NC.x - 4, Q, NC.z + 2), P(W.MZ.x, W.MZ.y + 0.3, W.MZ.z)],
-      sotto: [P(SX + 22, Q, 8), P(SX + 30, Q, 21.8), P(SX - 30, 0.3, 21.8), P(SX - 45, 0.6, 32), P(-10, 0.6, 30)],
-      fondamenta: [P(SX + 22, Q, 8), P(SX + 30, Q, 21.8), P(SX - 30, 0.3, 21.8), P(SX - 40, 0.3, 30), P(-10, FOND + 0.6, 40, 'w')],
-      struttura: [P(SX + 6, Q, 0)],
+      sotto: [P(SX + 28, Q, 8), P(SX + 30, Q, 21.8), P(SX - 30, 0.3, 21.8), P(SX - 45, 0.6, 32), P(-10, 0.6, 30)],
+      fondamenta: [P(SX + 28, Q, 8), P(SX + 30, Q, 21.8), P(SX - 30, 0.3, 21.8), P(SX - 40, 0.3, 30), P(-10, FOND + 0.6, 40, 'w')],
+      struttura: [P(SX + 30, Q, 0)],
     }[s];
-    if (s === 'struttura') { await cammina(strada); strutturaT = 1; flyTo('struttura', 3); await say('voce-struttura', RACCORDI.voceStruttura); }
+    if (s === 'struttura') { await cammina(strada); segui = null; strutturaT = 1; flyTo('struttura', 6); await say('voce-struttura', RACCORDI.voceStruttura); }
     else {
-      flyTo(s === 'fondamenta' ? 'sotto' : s, 3.2);
       if (s === 'stanza') allineaT = 1; // le componenti si allineano: la porta si apre
-      await cammina(strada); if (id !== runId) return;
-      if (s === 'fondamenta') flyTo('fondamenta', 2.4);
+      await cammina(strada, s === 'sotto' || s === 'fondamenta' ? 4.5 : 3.2); if (id !== runId) return;
+      segui = null; flyTo(s, 5.5); await pausa(1500);
       await say('voce-arriva', RACCORDI.voceArriva);
     }
     if (id !== runId) return;
@@ -255,6 +267,11 @@ async function start() {
   composer.addPass(new RenderPass(scene, camera));
   if (!LOW) composer.addPass(new UnrealBloomPass(new THREE.Vector2(1024, 1024), 0.42, 0.5, 0.78));
   composer.addPass(new OutputPass());
+  // vignettatura e grana leggera: la luce si raccoglie al centro, l'immagine smette di essere piatta
+  const grana = new ShaderPass({ uniforms: { tDiffuse: { value: null }, uT: { value: 0 } },
+    vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+    fragmentShader: 'uniform sampler2D tDiffuse;uniform float uT;varying vec2 vUv;float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233))+uT)*43758.5453);}void main(){vec4 c=texture2D(tDiffuse,vUv);vec2 d=vUv-.5;float v=smoothstep(.85,.25,length(d*vec2(1.15,1.)));c.rgb*=mix(.62,1.,v);c.rgb+=(h(vUv*vec2(1600.,900.))-.5)*.035;gl_FragColor=c;}' });
+  composer.addPass(grana);
   function resize() {
     const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false); composer.setSize(w, h);
     const aperto = !panel.classList.contains('closed') && w > 700;
@@ -271,6 +288,8 @@ async function start() {
     const dt = Math.min(0.1, (now - last) / 1000); last = now; const t = (now - T0) / 1000;
     const k = 1 - Math.exp(-dt * 1.8);
     ST.allinea += (allineaT - ST.allinea) * k; ST.struttura += (strutturaT - ST.struttura) * k;
+    for (let f = 0; f < 3; f++) ST.fessure[f] += (fessureT[f] - ST.fessure[f]) * (1 - Math.exp(-dt * 1.2));
+    accesa += (accesaT - accesa) * (1 - Math.exp(-dt * 0.9)); vfM.emissiveIntensity = 2.2 * accesa; vfM.color.setScalar(0.07 * (1 - accesa)); VF.userData.l.intensity = 5 * accesa;
     W.aggiorna(dt, t, ST);
     const L = ST.liv;
     // le figure in attesa, quella già passata, la ruminazione
@@ -285,16 +304,20 @@ async function start() {
       else VF.position.addScaledVector(tmpB, stepLen / d);
     }
     // camera
-    if (fly) { const e = ease(Math.min(1, (now - fly.s) / fly.d)); camera.position.lerpVectors(fly.p0, fly.p1, e); controls.target.lerpVectors(fly.t0, fly.t1, e); if (e >= 1) fly = null; if (!tour) controls.update(); else camera.lookAt(controls.target); }
+    if (segui && VF.visible) {
+      const kk = 1 - Math.exp(-dt * 0.8);
+      tmpA.copy(VF.position).add(segui.dietro); camera.position.lerp(tmpA, kk);
+      tmpB.copy(VF.position).add(segui.avanti); controls.target.lerp(tmpB, kk); camera.lookAt(controls.target);
+    } else if (fly) { const e = ease(Math.min(1, (now - fly.s) / fly.d)); camera.position.lerpVectors(fly.p0, fly.p1, e); controls.target.lerpVectors(fly.t0, fly.t1, e); if (e >= 1) fly = null; if (!tour) controls.update(); else camera.lookAt(controls.target); }
     else if (tour) {
-      if (tour.idle && now - tour.idle > 650) { tour.pt = Math.round(tour.pt * NST) / NST; tour.idle = 0; }
-      tour.p += (tour.pt - tour.p) * (1 - Math.exp(-dt * 3.2)); if (Math.abs(tour.pt - tour.p) < 1e-4) tour.p = tour.pt;
+      if (tour.idle && now - tour.idle > 900) { tour.pt = Math.round(tour.pt * NST) / NST; tour.idle = 0; }
+      tour.p += (tour.pt - tour.p) * (1 - Math.exp(-dt * 1.5)); if (Math.abs(tour.pt - tour.p) < 1e-4) tour.p = tour.pt;
       TP.getPoint(tour.p, camera.position); TT.getPoint(tour.p, controls.target); camera.lookAt(controls.target);
       const i = Math.round(tour.p * NST);
-      if (i !== tour.i) { tour.i = i; mark(TOUR_KEYS[i]); RUM.visible = TOUR_KEYS[i] === 'corridoio'; strutturaT = 0; zitto(); }
-      if (tour.p === tour.pt && tour.spoken !== i) { tour.spoken = i; say(`spazio-${TOUR_KEYS[i]}`, testoSpazio(TOUR_KEYS[i])); }
+      if (i !== tour.i) { tour.i = i; mark(TOUR_KEYS[i]); RUM.visible = TOUR_KEYS[i] === 'corridoio'; strutturaT = 0; zitto(); const d = TOUR[i][4]; if (d !== undefined) { domanda(DOMANDE[d], null); for (let f = 0; f < 3; f++) fessureT[f] = f === d ? 1 : 0; } else { domanda(null); fessureT.fill(0); } }
+      if (tour.p === tour.pt && tour.spoken !== i) { tour.spoken = i; const d = TOUR[i][4]; if (d !== undefined) say(`domanda-${d + 1}`, DOMANDE[d]); else say(`spazio-${TOUR_KEYS[i]}`, testoSpazio(TOUR_KEYS[i])); }
     } else controls.update();
-    picker.update();
+    picker.update(); grana.uniforms.uT.value = (t * 7.3) % 100;
     if (AC && soundOn) { filt.frequency.setTargetAtTime(260 + 22 * (L + 12), AC.currentTime, 0.4); lfoG.gain.setTargetAtTime(40 + 220 * ST.attivazione, AC.currentTime, 0.4); }
     composer.render();
     // etichette

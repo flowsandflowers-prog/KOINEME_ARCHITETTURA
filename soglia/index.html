@@ -61,6 +61,12 @@ input[type=range]{width:100%;accent-color:var(--ochre)}
 .qtag{position:fixed;transform:translate(-50%,-100%);font-family:var(--display);font-size:18px;color:var(--ink);text-align:center;pointer-events:none;opacity:0;transition:opacity .5s;text-shadow:0 1px 12px #000;max-width:340px}
 .qtag.on{opacity:1}
 .qtag i{display:block;font-size:15px;color:var(--warm);font-style:italic}
+.domanda{position:fixed;left:50%;top:22%;transform:translateX(-50%);text-align:center;pointer-events:none;opacity:0;transition:opacity 1.4s;max-width:min(820px,calc(100% - 40px))}
+.domanda.on{opacity:1}
+.domanda span{display:block;font-family:var(--display);font-weight:300;font-size:clamp(28px,4vw,46px);letter-spacing:.02em;color:var(--ink);text-shadow:0 2px 24px rgba(0,0,0,.65)}
+.domanda i{display:block;margin-top:12px;font-family:var(--display);font-size:clamp(18px,2.2vw,26px);color:var(--warm);opacity:0;transition:opacity 1.2s;text-shadow:0 1px 16px rgba(0,0,0,.7)}
+.domanda.risposta i{opacity:1}
+@media (min-width:701px){.domanda{left:calc(50% + 190px)}}
 .sub{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(760px,calc(100% - 420px));font-family:var(--display);font-size:18px;line-height:1.45;text-align:center;color:var(--ink);text-shadow:0 1px 10px #000;opacity:0;transition:opacity .4s;pointer-events:none}
 .sub.on{opacity:1}
 .hint{position:fixed;right:18px;bottom:18px;font-size:12px;color:var(--ink-soft);display:none}
@@ -83,6 +89,7 @@ input[type=range]{width:100%;accent-color:var(--ochre)}
 <canvas id="scene" aria-hidden="true"></canvas>
 <div class="labels" id="labels"></div>
 <div class="qtag" id="qtag"></div>
+<div class="domanda" id="domanda"><span id="dq"></span><i id="dr"></i></div>
 <div class="sub" id="sub" aria-live="polite"></div>
 <button class="toggle" id="openPanel"></button>
 <aside class="panel" id="panel">
