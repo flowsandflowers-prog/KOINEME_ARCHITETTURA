@@ -13,6 +13,13 @@ export default defineConfig({
         modulo1: resolve(import.meta.dirname, 'modulo-1/index.html'),
         modulo1v5: resolve(import.meta.dirname, 'modulo-1-v5/index.html'),
         modulo1v5x: resolve(import.meta.dirname, 'modulo-1-v5x/index.html'),
+        soglia: resolve(import.meta.dirname, 'soglia/index.html'),
+        sogliaStudio: resolve(import.meta.dirname, 'soglia/studio/index.html'),
+        sogliaDirezioni: resolve(import.meta.dirname, 'soglia/studio/direzioni.html'),
+        sogliaMatrice: resolve(import.meta.dirname, 'soglia/studio/matrice.html'),
+        sogliaMatrice2: resolve(import.meta.dirname, 'soglia/studio/matrice2.html'),
+        sogliaMatrice3: resolve(import.meta.dirname, 'soglia/studio/matrice3.html'),
+        sogliaMatrice4: resolve(import.meta.dirname, 'soglia/studio/matrice4.html'),
       },
       // three.js in un file a sé: resta in cache tra una pagina e l'altra
       output: { manualChunks: (id) => (id.includes('node_modules/three') ? 'three' : undefined) },
