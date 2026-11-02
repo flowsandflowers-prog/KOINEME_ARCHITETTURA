@@ -9,7 +9,6 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { createPicker } from '../src/lib/picker.js';
@@ -117,7 +116,7 @@ async function start() {
     g.userData = { meshes, l, glow, mixer,
       set(on) { for (const m of meshes) m.material = on ? litM : darkM; l.intensity = on ? 5 : 0; glow.material.opacity = on ? 0.6 : 0; },
       // camminare o stare: dissolvenza fra le due animazioni; la velocità del passo segue quella del corpo
-      cammina(on, vel = 1.6) { if (!act.walk || on === passo) { if (act.walk && on) act.walk.timeScale = vel / 1.6; return; } passo = on; const a = on ? act.walk : act.idle, b = on ? act.idle : act.walk; a.reset().play(); a.timeScale = on ? vel / 1.6 : 1; a.crossFadeFrom(b, 0.35, false); } };
+      cammina(on, vel = 1.6) { if (!act.walk || on === passo) { return; } passo = on; const a = on ? act.walk : act.idle, b = on ? act.idle : act.walk; a.reset().play(); a.timeScale = 1; a.crossFadeFrom(b, 0.35, false); } };
     scene.add(g); FIG.push(g); return g;
   }
   const attesa = [figura(false), figura(false)], passato = figura(true), VF = figura(false), RUM = figura(false);
@@ -233,7 +232,7 @@ async function start() {
   const qtag = $('qtag'), stepsEl = $('steps'), domEl = $('domanda');
   const pausa = (ms) => new Promise((r) => setTimeout(r, REDUCE ? ms / 3 : ms));
   function domanda(q, r) { if (!q) { domEl.classList.remove('on', 'risposta'); return; } $('dq').textContent = q; $('dr').textContent = r || ''; domEl.classList.add('on'); domEl.classList.toggle('risposta', !!r); }
-  const fessureT = [0, 0, 0], tremula = [false, false, false]; let segui = null, allinea3T = 0;
+  const fessureT = [0, 0, 0], tremula = [false, false, false]; let segui = null, allinea3T = 0, drone = null;
   // un'inquadratura: stacco netto su p0/t0, poi un movimento lento fino a p1/t1
   function taglio(p0, t0, p1, t1, dur) { fly = { p0, t0, p1, t1, s: performance.now(), d: dur * 1000 }; camera.position.copy(p0); controls.target.copy(t0); }
   // la lama risponde alla risposta: sì accesa, no spenta, in parte tremula
@@ -244,34 +243,34 @@ async function start() {
   function mostra(html, p) { qtag.innerHTML = html; qPos = p; qtag.classList.add('on'); }
   async function smista(idx) {
     const id = ++runId; zitto(); if (mode !== 'racconta') setMode('racconta');
-    const v = VOCI[idx]; allineaT = 0; strutturaT = 0; RUM.visible = false; segui = null; domanda(null); fessureT.fill(0); tremula.fill(false);
+    const v = VOCI[idx]; allineaT = 0; strutturaT = 0; RUM.visible = false; segui = null; drone = null; domanda(null); fessureT.fill(0); tremula.fill(false);
     stepsEl.replaceChildren(); const li = [];
     DOMANDE.forEach((d, i) => { const e = document.createElement('li'); const b = document.createElement('b'); b.textContent = d + ' '; e.append(b, v.risposte[i]); stepsEl.appendChild(e); li.push(e); });
     { const e = document.createElement('li'); const b = document.createElement('b'); b.textContent = DOVE_VA + ' '; e.append(b, v.doveVa); stepsEl.appendChild(e); li.push(e); }
     const X = W.SOGLIA_X, Lv = () => ST.liv, r = v.risposte;
-    mark('soglia'); VF.visible = true; VF.userData.set(false); VF.position.set(X[0] - 9, Q + Lv(), 0); VF.rotation.y = Math.PI / 2; tremula.fill(false); allinea3T = 0;
-    say(`voce-${String(v.n).padStart(2, '0')}`, v.voce); // la voce parla mentre la figura cammina: nessuna attesa
-    // 1 · Riguarda che cosa? Sull'asse, dietro la figura: la lama si accende
-    taglio(V(X[0] - 20, Q + Lv() + 1.9, 0.3), V(X[0], Q + Lv() + 4.2, 0), V(X[0] - 15, Q + Lv() + 1.8, 0.2), V(X[0], Q + Lv() + 4, 0), 5);
-    li[0].classList.add('on'); domanda(DOMANDE[0], null);
-    await cammina([P(X[0] - 1.6, Q, 0)], 3.2); if (id !== runId) return;
-    domanda(DOMANDE[0], r[0]); fessureT[0] = 1;
-    await cammina([P(X[0] + 3, Q, 0)], 3.2); if (id !== runId) return;
-    // 2 · Valutazione di rilevanza? Dall'alto: la lama risponde (sì accesa, no spenta, in parte tremula)
-    taglio(V(X[1] - 30, Q + Lv() + 58, 46), V(X[1] + 2, Q + Lv() + 2, 0), V(X[1] - 24, Q + Lv() + 55, 41), V(X[1] + 4, Q + Lv() + 2, 0), 5);
-    li[1].classList.add('on'); domanda(DOMANDE[1], null);
-    await cammina([P(X[1] - 1.6, Q, 0)], 4.2); if (id !== runId) return;
-    domanda(DOMANDE[1], r[1]); lama(1, r[1]);
-    await cammina([P(X[1] + 3, Q, 0)], 3.6); if (id !== runId) return;
-    // 3 · Si muovono insieme? Oltre la fessura, rivolta indietro: le due metà del monolite scorrono fino ad allinearsi
-    taglio(V(X[2] + 14, Q + Lv() + 2.2, 1.4), V(X[2], Q + Lv() + 3, 0), V(X[2] + 11, Q + Lv() + 2, 1.1), V(X[2], Q + Lv() + 2.8, 0), 5);
-    li[2].classList.add('on'); domanda(DOMANDE[2], null);
-    await cammina([P(X[2] - 2.4, Q, 0)], 4.2); if (id !== runId) return;
-    domanda(DOMANDE[2], r[2]); allinea3T = /^sì/.test(r[2]) ? 1 : /^in parte/.test(r[2]) ? 0.5 : 0; lama(2, r[2]);
-    await pausa(700); if (id !== runId) return;
-    await cammina([P(X[2] + 6, Q, 0)], 2.6); if (id !== runId) return;
-    VF.userData.set(true); domanda(null); li[3].classList.add('on'); // fuori dalla terza fessura la figura si accende
-    await pausa(900); if (id !== runId) return;
+    mark('soglia'); VF.visible = false; VF.userData.set(false); tremula.fill(false); allinea3T = 0;
+    say(`voce-${String(v.n).padStart(2, '0')}`, v.voce);
+    // una sola ripresa continua: la camera è la voce, attraversa le tre fessure a quota d'occhi
+    const y0 = Q + 1.75;
+    const cps = [V(X[0] - 16, y0 + 0.4, 0.6), V(X[0] - 5, y0, 0.1), V(X[0] + 2, y0, 0), V(X[1], y0, 0), V(X[2], y0, 0), V(X[2] + 7, y0 + 0.5, 0)];
+    const passa = (x) => (x - cps[0].x) / (cps[cps.length - 1].x - cps[0].x); // posizione lungo la ripresa, in proporzione
+    drone = { path: new THREE.CatmullRomCurve3(cps), s: performance.now(), d: (REDUCE ? 4 : 8) * 1000, liv: Lv(),
+      battute: [
+        { u: passa(X[0] - 6), f: () => { li[0].classList.add('on'); domanda(DOMANDE[0], null); } },
+        { u: passa(X[0] - 1), f: () => { domanda(DOMANDE[0], r[0]); fessureT[0] = 1; } },
+        { u: passa(X[1] - 7), f: () => { li[1].classList.add('on'); domanda(DOMANDE[1], null); } },
+        { u: passa(X[1] - 1), f: () => { domanda(DOMANDE[1], r[1]); lama(1, r[1]); } },
+        { u: passa(X[2] - 7), f: () => { li[2].classList.add('on'); domanda(DOMANDE[2], null); } },
+        { u: passa(X[2] - 1.5), f: () => { domanda(DOMANDE[2], r[2]); allinea3T = /^sì/.test(r[2]) ? 1 : /^in parte/.test(r[2]) ? 0.5 : 0; lama(2, r[2]); } },
+      ], i: 0, fine: null };
+    await new Promise((res) => { drone.fine = res; }); if (id !== runId) return;
+    // controcampo: oltre la terza fessura, la figura esce a passo naturale e si accende
+    domanda(null);
+    VF.position.set(X[2] + 0.2, Q + Lv(), 0); VF.rotation.y = Math.PI / 2; VF.visible = true;
+    taglio(V(X[2] + 13, Q + Lv() + 1.9, 2.2), V(X[2], Q + Lv() + 2.2, 0), V(X[2] + 11, Q + Lv() + 1.8, 1.8), V(X[2] + 1, Q + Lv() + 2.0, 0), 4);
+    li[3].classList.add('on'); setTimeout(() => { if (id === runId) VF.userData.set(true); }, 900);
+    await cammina([P(X[2] + 4.5, Q, 0)], 1.45); if (id !== runId) return;
+    await pausa(600); if (id !== runId) return;
     tremula.fill(false); fessureT.fill(0);
     const N0 = W.NECK0, s = v.spazio, neck = (t) => { const p = W.NECK.getPointAt(t); return P(p.x, Q, p.z); };
     const strada = {
@@ -286,9 +285,13 @@ async function start() {
     if (s === 'struttura') { strutturaT = 1; flyTo('struttura', 5); await say('voce-struttura', RACCORDI.voceStruttura); }
     else {
       if (s === 'stanza') allineaT = 1; // le componenti si allineano: la porta si apre
-      flyTo(s === 'fondamenta' ? 'sotto' : s, 3);
-      await cammina(strada, 7); if (id !== runId) return;
-      if (s === 'fondamenta') flyTo('fondamenta', 2.5);
+      // stacco: la figura è già vicina alla destinazione e fa gli ultimi passi
+      const ult = strada[strada.length - 1], pen = strada.length > 1 ? strada[strada.length - 2] : P(SX + 30, Q, 0);
+      tmpB.copy(pen.v); tmpB.y += off(pen.f); tmpC.copy(ult.v); tmpC.y += off(ult.f); // in coordinate del mondo
+      tmpA.subVectors(tmpC, tmpB); const d = tmpA.length(); const k0 = Math.max(0, 1 - 6 / Math.max(d, 0.01));
+      VF.position.copy(tmpB).addScaledVector(tmpA, k0);
+      const RC = RAC[s]; const o = off(RC[2]); taglio(V(RC[0][0], RC[0][1] + o, RC[0][2]), V(RC[1][0], RC[1][1] + o, RC[1][2]), V(RC[0][0] * 0.98 + RC[1][0] * 0.02, RC[0][1] + o, RC[0][2] * 0.98 + RC[1][2] * 0.02), V(RC[1][0], RC[1][1] + o, RC[1][2]), 4);
+      await cammina([ult], 1.45); if (id !== runId) return;
       await say('voce-arriva', RACCORDI.voceArriva);
     }
     if (id !== runId) return;
@@ -301,7 +304,6 @@ async function start() {
   /* ---------- post e dimensioni ---------- */
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  if (!LOW) { const ao = new GTAOPass(scene, camera, 1024, 1024); ao.updateGtaoMaterial({ radius: 2.5, distanceExponent: 1.5, thickness: 2, scale: 1.2 }); ao.blendIntensity = 0.85; composer.addPass(ao); }
   if (!LOW) composer.addPass(new UnrealBloomPass(new THREE.Vector2(1024, 1024), 0.42, 0.5, 0.78));
   composer.addPass(new OutputPass());
   // vignettatura e grana leggera: la luce si raccoglie al centro, l'immagine smette di essere piatta
@@ -347,7 +349,13 @@ async function start() {
 
     }
     // camera
-    if (segui && VF.visible) {
+    if (drone) {
+      const u = Math.min(1, (now - drone.s) / drone.d), e = u * u * (3 - 2 * u); // parte e arriva morbida
+      drone.path.getPoint(e, camera.position); camera.position.y += ST.liv - drone.liv;
+      drone.path.getPoint(Math.min(1, e + 0.06), controls.target); controls.target.y += ST.liv - drone.liv + 0.3; camera.lookAt(controls.target);
+      while (drone.i < drone.battute.length && e >= drone.battute[drone.i].u) drone.battute[drone.i++].f();
+      if (u >= 1) { const f = drone.fine; drone = null; if (f) f(); }
+    } else if (segui && VF.visible) {
       const kk = 1 - Math.exp(-dt * 0.8);
       tmpA.copy(VF.position).add(segui.dietro); camera.position.lerp(tmpA, kk);
       tmpB.copy(VF.position).add(segui.avanti); controls.target.lerp(tmpB, kk); camera.lookAt(controls.target);
