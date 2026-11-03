@@ -3,7 +3,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { disposeObject } from '../../src/lib/dispose.js';
-import { posaAppesa, alaAverla, vesteAverla } from '../animali.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const A = [
@@ -12,8 +11,7 @@ const A = [
   ['La cerva', '../modelli/animali/cerva.glb', 'terra'], ['Il cavallo', '../modelli/animali/cavallo.glb', 'terra'],
   ['Il toro', '../modelli/animali/toro.glb', 'terra'], ["L'alpaca", '../modelli/animali/alpaca.glb', 'terra'],
   ['La cicogna', '../modelli/cicogna.glb', 'aria'], ['Il fenicottero', '../modelli/animali/fenicottero.glb', 'aria'],
-  ['Il pappagallo', '../modelli/pappagallo.glb', 'aria'], ["L'averla", '../modelli/animali/averla.glb', 'averla'],
-  ['La scimmia', '../modelli/animali/scimmia.glb', 'appesa'],
+  ['Il pappagallo', '../modelli/pappagallo.glb', 'aria'],
 ];
 const canvas = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -44,15 +42,8 @@ await Promise.all(A.map(async ([, url, tipo], i) => {
   STAZ[i] = { cx, tipo };
   if (!url) return;
   const gl = await loader.loadAsync(url); const root = gl.scene;
-  if (tipo === 'averla') await vesteAverla(root, '../modelli/animali/');
-  if (tipo === 'appesa') { // appesa alla fune per la mano destra; il perno è la mano
-    const h = posaAppesa(root, 2.4); const perno = new THREE.Group(); perno.position.y = 3.0; g.add(perno); perno.add(h.g);
-    const fune = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.4, 6), new THREE.MeshStandardMaterial({ color: 0x2a2520 })); fune.position.y = 3.7; g.add(fune);
-    root.traverse((o) => { if (o.isMesh) { o.userData.orig = o.material; MESHES.push(o); o.frustumCulled = false; } });
-    APPESE.push({ perno, h }); return; }
-  const box = new THREE.Box3().setFromObject(root), sz = box.getSize(V(0, 0, 0)), aria = tipo === 'aria' || tipo === 'averla', s = (aria ? 3.4 : 3.0) / Math.max(sz.x, sz.y, sz.z);
+  const box = new THREE.Box3().setFromObject(root), sz = box.getSize(V(0, 0, 0)), aria = tipo === 'aria', s = (aria ? 3.4 : 3.0) / Math.max(sz.x, sz.y, sz.z);
   root.scale.setScalar(s); root.position.set(-(box.min.x + box.max.x) / 2 * s, -box.min.y * s + (aria ? 0.9 : 0), -(box.min.z + box.max.z) / 2 * s);
-  if (tipo === 'averla') AVERLE.push(root);
   root.traverse((o) => { if (o.isMesh) { o.userData.orig = o.material; MESHES.push(o); o.frustumCulled = false; } });
   const pivot = new THREE.Group(); pivot.rotation.y = -0.6; pivot.add(root); g.add(pivot);
   const mixer = new THREE.AnimationMixer(root); const clip = gl.animations.find((c) => /^walk$/i.test(c.name)) || gl.animations.find((c) => /walk/i.test(c.name)) || gl.animations[0];
@@ -64,8 +55,6 @@ const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(0.05, clock.getDelta());
   for (const m of MIX) m.update(dt); const t = clock.elapsedTime;
-  for (const a of AVERLE) alaAverla(a, t);
-  for (const a of APPESE) { a.perno.rotation.z = 0.18 * Math.sin(t * 1.3); a.perno.rotation.x = 0.06 * Math.sin(t * 0.9); a.h.oscilla(t); }
   const W = canvas.clientWidth, H = canvas.clientHeight;
   if (canvas.width !== Math.floor(W * renderer.getPixelRatio())) renderer.setSize(W, H, false);
   renderer.setScissor(0, 0, W, H); renderer.setViewport(0, 0, W, H); renderer.clear();
