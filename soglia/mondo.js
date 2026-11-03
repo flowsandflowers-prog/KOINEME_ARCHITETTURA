@@ -102,7 +102,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   SOPRA.attach(aria);
 
   /* ---------- i quattro appoggi: tronchi rossi; sopra, una pellicola blu che poggia sulle loro cime ---------- */
-  const ALBERI = [[-70, -30], [-62, 30], [30, -30], [39, 30]]; // a sinistra del parallelepipedo e fra lui e il corridoio, sfalsati: di fianco si vedono tutti e quattro
+  const ALBERI = [[-70, -30], [-82, 30], [30, -30], [39, 30]]; // a sinistra del parallelepipedo e fra lui e il corridoio, sfalsati: di fianco si vedono tutti e quattro
   const alberi = ALBERI.map(([x, z]) => {
     const g = new THREE.Group(); g.position.set(x, 0, z); SOTTO.add(g);
     const trunk = shade(add(new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.4, 1, 20), M.bark.clone()), g, 0, 0.5, 0));
@@ -148,18 +148,23 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   box(NECK0.x - (SX + 36), 1.0, 3.0, M.basalt, SOPRA, (SX + 36 + NECK0.x) / 2, Q - 0.5, 0);
   // l'unica scala: dritta, un pieno svuotato. La fascia davanti al parallelepipedo è tolta sopra la linea dei gradini:
   // resta il pieno sotto, gradinato. Alzate rosse come i tronchi, pedate blu come il piano di sotto
-  const SCALA = { x0: SX + 30, x1: SX - 30, y1: 0.4, n: 100, z: (ZS + ZF) / 2 };
-  { const { x0, x1, y1, n } = SCALA, run = (x0 - x1) / n, rise = (Q - y1) / n;
-    const sh = new THREE.Shape(); sh.moveTo(SX - 35, YB); sh.lineTo(SX + 35, YB); sh.lineTo(SX + 35, Q); sh.lineTo(x0, Q);
-    for (let i = 0; i < n; i++) { const y = Q - (i + 1) * rise, x = x0 - i * run; sh.lineTo(x, y); sh.lineTo(x - run, y); }
-    sh.lineTo(SX - 35, y1); sh.closePath();
-    const g = new THREE.ExtrudeGeometry(sh, { depth: ZF - ZS, bevelEnabled: false, curveSegments: 1 }); g.translate(0, 0, ZS);
-    shade(add(new THREE.Mesh(g, M.lucido), SOPRA));
-    const w = ZF - ZS - 0.02, o = new THREE.Object3D();
-    const ped = new THREE.InstancedMesh(new THREE.BoxGeometry(run, 0.06, w), M.pedata, n), alz = new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, rise, w), M.alzata, n);
-    for (let i = 0; i < n; i++) { const y = Q - (i + 1) * rise, x = x0 - i * run;
-      o.position.set(x - run / 2, y + 0.03, SCALA.z); o.updateMatrix(); ped.setMatrixAt(i, o.matrix);
-      o.position.set(x - 0.03, y + rise / 2, SCALA.z); o.updateMatrix(); alz.setMatrixAt(i, o.matrix); }
+  // due rampe uguali e, fra le due, il pianerottolo a metà altezza. La prima è scavata nella fascia del parallelepipedo;
+  // la seconda prosegue fuori dal parallelepipedo, un pieno gradinato che scende fino alle fondamenta
+  const YM = (Q + FOND) / 2, PL = 10; // quota e lunghezza del pianerottolo
+  const SCALA = { z: (ZS + ZF) / 2, x0: SX + 30, xL: SX - 35 + PL, xE: SX - 35, n: 92 };
+  SCALA.run = (SCALA.x0 - SCALA.xL) / SCALA.n; SCALA.rise = (Q - YM) / SCALA.n; SCALA.x1 = SCALA.xE - SCALA.run * SCALA.n; SCALA.ym = YM;
+  { const { x0, xL, xE, x1, n, run, rise } = SCALA, dep = ZF - ZS;
+    const gradini = (sh, xs, ys) => { for (let i = 0; i < n; i++) { const y = ys - (i + 1) * rise, x = xs - i * run; sh.lineTo(x, y); sh.lineTo(x - run, y); } };
+    const a = new THREE.Shape(); a.moveTo(SX - 35, YB); a.lineTo(SX + 35, YB); a.lineTo(SX + 35, Q); a.lineTo(x0, Q); gradini(a, x0, Q); a.lineTo(xE, YM); a.closePath();
+    const b = new THREE.Shape(); b.moveTo(xE, FOND); b.lineTo(xE, YM); gradini(b, xE, YM); b.closePath();
+    for (const sh of [a, b]) { const g = new THREE.ExtrudeGeometry(sh, { depth: dep, bevelEnabled: false, curveSegments: 1 }); g.translate(0, 0, ZS); shade(add(new THREE.Mesh(g, M.lucido), SOPRA)); }
+    const w = dep - 0.02, o = new THREE.Object3D();
+    const ped = new THREE.InstancedMesh(new THREE.BoxGeometry(run, 0.06, w), M.pedata, 2 * n + 1), alz = new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, rise, w), M.alzata, 2 * n);
+    let k = 0;
+    for (const [xs, ys] of [[x0, Q], [xE, YM]]) for (let i = 0; i < n; i++, k++) { const y = ys - (i + 1) * rise, x = xs - i * run;
+      o.scale.set(1, 1, 1); o.position.set(x - run / 2, y + 0.03, SCALA.z); o.updateMatrix(); ped.setMatrixAt(k, o.matrix);
+      o.position.set(x - 0.03, y + rise / 2, SCALA.z); o.updateMatrix(); alz.setMatrixAt(k, o.matrix); }
+    o.scale.set(PL / run, 1, 1); o.position.set(xE + PL / 2, YM + 0.03, SCALA.z); o.updateMatrix(); ped.setMatrixAt(2 * n, o.matrix); // il pianerottolo, blu come le pedate
     for (const im of [ped, alz]) { im.receiveShadow = true; im.computeBoundingSphere(); SOPRA.add(im); } }
 
   /* ---------- il nido: un uovo in piedi, intrecciato ---------- */
@@ -283,7 +288,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
     circ(NC.x, NC.z, 20, 20); for (const c of OTTO) circ(c.x, c.z, 6, 6); circ(NC.x, NC.z, 34, 30);
     pianta.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(NECK.getPoints(40).map((p) => V(p.x, 0, p.z))), lm));
     const rect = (x, z, w, d) => pianta.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([V(x - w / 2, 0, z - d / 2), V(x + w / 2, 0, z - d / 2), V(x + w / 2, 0, z + d / 2), V(x - w / 2, 0, z + d / 2)]), lm));
-    rect(SX, 0, 70, 40); rect(SX, 16.5, 60, 7); SOGLIA_X.forEach((x) => { rect(x, -6.3, 2.8, 11.4); rect(x, 6.3, 2.8, 11.4); });
+    rect(SX, 0, 70, 40); rect((SCALA.x1 + SCALA.x0) / 2, 16.5, SCALA.x0 - SCALA.x1, 7); SOGLIA_X.forEach((x) => { rect(x, -6.3, 2.8, 11.4); rect(x, 6.3, 2.8, 11.4); });
     pianta.position.y = Q + 0.3; pianta.userData.mat = lm; }
 
   /* ---------- bersagli del tocco (invisibili) e punti delle etichette ---------- */

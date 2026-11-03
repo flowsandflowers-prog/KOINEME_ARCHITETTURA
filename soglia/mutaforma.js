@@ -1,7 +1,8 @@
 // Il mutaforma: in attesa sulla piattaforma davanti al primo passaggio della Soglia.
 // Vaga sulla piattaforma (cammina, si ferma, si guarda intorno) e, a caso, cambia forma:
 // si scioglie in polvere di luce e si ricompone in un altro animale. Le forme: cervo, volpe, lepre, cicogna.
-// Ogni animale usa le animazioni del proprio file; la cicogna vola in cerchi bassi sopra la piattaforma.
+// Ogni animale usa le animazioni del proprio file. La cicogna si alza, vola alta sopra la Soglia, gira intorno al nido
+// e torna alla piattaforma (area.volo: i punti del giro); al ritorno cambia di nuovo forma.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
@@ -11,7 +12,7 @@ const FORME = [
   { nome: 'cervo', file: 'animali/cervo.glb', misura: 5.0, va: 'Walk', sta: ['Idle', 'Eating', 'Idle_Headlow'], vel: 1.8 },
   { nome: 'volpe', file: 'volpe.glb', misura: 3.0, va: 'Walk', sta: ['Survey'], vel: 1.6 },
   { nome: 'lepre', file: 'animali/lepre.glb', misura: 2.0, va: 'Running', sta: ['Guarding', 'Sitting.000'], vel: 3.0, texture: true },
-  { nome: 'cicogna', file: 'cicogna.glb', misura: 4.6, vola: true, vel: 2.2 },
+  { nome: 'cicogna', file: 'cicogna.glb', misura: 4.6, vola: true, vel: 9 },
 ];
 
 async function vesteLepre(root) {
@@ -49,16 +50,17 @@ export async function creaMutaforma(scene, area) {
 
   // stato
   const pos = V((area.x0 + area.x1) / 2, area.y, 0), meta = V(0, 0, 0), C = V((area.x0 + area.x1) / 2, area.y, (area.z0 + area.z1) / 2);
-  let yaw = Math.PI / 2, f = forme[0], stato = 'sta', timer = 2, prossimo = 9 + Math.random() * 6, muta = null, giro = 0;
+  const VOLO = new THREE.CatmullRomCurve3(area.volo, true, 'centripetal'), LV = VOLO.getLength(), tg = V(0, 0, 0);
+  let u = 0, yaw = Math.PI / 2, f = forme[0], stato = 'sta', timer = 2, prossimo = 9 + Math.random() * 6, muta = null, giro = 0;
   const rnd = (a, b) => a + Math.random() * (b - a);
   function suona(fm, nome) { const a = fm.act[nome]; if (!a || fm.corrente === a) return; a.reset().play(); if (fm.corrente) a.crossFadeFrom(fm.corrente, 0.4, false); fm.corrente = a; }
   function mostra(fm) { for (const x of forme) x.g.visible = x === fm; }
   function avvia(fm) {
-    if (fm.vola) { suona(fm, Object.keys(fm.act)[0]); stato = 'vola'; giro = Math.atan2(pos.z - C.z, pos.x - C.x); }
+    if (fm.vola) { suona(fm, Object.keys(fm.act)[0]); stato = 'vola'; u = 0; }
     else { stato = 'sta'; timer = rnd(1, 2.5); suona(fm, fm.sta[0]); }
   }
   function colloca(fm) {
-    if (fm.vola) fm.g.position.set(pos.x, area.y + 4.5, pos.z); else fm.g.position.set(pos.x, area.y, pos.z);
+    if (fm.vola) { VOLO.getPointAt(0, fm.g.position); VOLO.getTangentAt(0, tg); yaw = Math.atan2(tg.x, tg.z); } else fm.g.position.set(pos.x, area.y, pos.z);
     fm.g.rotation.y = yaw;
   }
   avvia(f); colloca(f); mostra(f);
@@ -75,9 +77,10 @@ export async function creaMutaforma(scene, area) {
       }
       f.mixer.update(dt);
       prossimo -= dt;
-      if (f.vola) { // cerchi bassi sopra la piattaforma
-        giro += dt * f.vel / 4.5; const r = 4.5; pos.set(C.x + Math.cos(giro) * r * 0.7, area.y, C.z + Math.sin(giro) * r * 1.6);
-        yaw = Math.atan2(-Math.sin(giro) * 0.7, Math.cos(giro) * 1.6); f.g.position.set(pos.x, area.y + 4.5 + 0.4 * Math.sin(t * 0.9), pos.z); f.g.rotation.y = yaw;
+      if (f.vola) { // il giro: alta sopra la Soglia, intorno al nido, ritorno; finito il giro cambia forma
+        u = Math.min(1, u + dt * f.vel / LV); VOLO.getPointAt(u, f.g.position); VOLO.getTangentAt(u, tg);
+        yaw = Math.atan2(tg.x, tg.z); f.g.rotation.y = yaw; f.g.rotation.x = -Math.asin(THREE.MathUtils.clamp(tg.y, -1, 1)) * 0.6;
+        pos.set(f.g.position.x, area.y, f.g.position.z); prossimo = u >= 1 ? 0 : 1;
       } else if (stato === 'sta') {
         timer -= dt;
         if (timer <= 0) { meta.set(rnd(area.x0, area.x1), area.y, rnd(area.z0, area.z1)); if (meta.distanceTo(pos) > 2) { stato = 'va'; suona(f, f.va); } else timer = 1; }
