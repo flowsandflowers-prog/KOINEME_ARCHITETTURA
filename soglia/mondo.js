@@ -10,7 +10,7 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 export const Q = 40, FOND = -34, TAGLIO = 54, SX = -20, GX = 130;
 export const NC = V(GX, Q + 24, -4); // centro della camera centrale (la stanza)
 
-export function costruisci(scene, { low = false } = {}) {
+export function costruisci(scene, { low = false, env = null } = {}) {
   let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   const cut = [new THREE.Plane(V(0, 0, -1), TAGLIO)];
   const SOPRA = new THREE.Group(); scene.add(SOPRA);   // tutto quello che sale e scende con il livello
@@ -22,14 +22,18 @@ export function costruisci(scene, { low = false } = {}) {
   const basaltTex = canvasTex(S, S, (g, w, h) => { g.fillStyle = '#26262a'; g.fillRect(0, 0, w, h); for (let x = 0; x < w; x += 6) { g.fillStyle = `rgba(0,0,0,${0.12 + 0.12 * Math.sin(x * 0.3)})`; g.fillRect(x, 0, 2, h); } for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${rnd() < 0.5 ? '215,210,200' : '0,0,0'},${0.02 + rnd() * 0.05})`; g.fillRect(rnd() * w, 0, 1 + rnd() * 2, h); } }, [8, 3]);
   const M = {
     basalt: new THREE.MeshStandardMaterial({ map: basaltTex, roughness: 0.72, metalness: 0.05 }),
-    top: new THREE.MeshStandardMaterial({ color: 0x55534f, roughness: 0.9 }),
+    // il parallelepipedo: basalto nero, lucido (riflette il cielo)
+    lucido: new THREE.MeshStandardMaterial({ color: 0x0b0b0d, roughness: 0.16, metalness: 0.35, envMapIntensity: 1.4 }),
+    top: new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.3, metalness: 0.3, envMapIntensity: 1.2 }),
+    alzata: new THREE.MeshStandardMaterial({ color: 0x8a2e20, roughness: 0.55 }),   // rosso come i tronchi
+    pedata: new THREE.MeshStandardMaterial({ color: 0x2f6db5, roughness: 0.3, metalness: 0.1 }), // blu come la pellicola
     bark: new THREE.MeshStandardMaterial({ map: canvasTex(256, 512, (g, w, h) => { g.fillStyle = '#7d2b1f'; g.fillRect(0, 0, w, h); for (let i = 0; i < 80; i++) { const x = rnd() * w; g.strokeStyle = `rgba(${rnd() < 0.5 ? '35,8,4' : '160,72,48'},${0.25 + rnd() * 0.35})`; g.lineWidth = 2 + rnd() * 5; g.beginPath(); g.moveTo(x, 0); for (let y = 0; y <= h; y += 32) g.lineTo(x + Math.sin(y * 0.02 + i) * 6, y); g.stroke(); } }, [2, 4]), roughness: 0.82 }),
     fibre: new THREE.MeshStandardMaterial({ color: 0x5a4b3e, roughness: 0.9, transparent: true, opacity: 1 }),
     collo: new THREE.MeshStandardMaterial({ color: 0x9a6a3a, roughness: 0.85 }),   // l'anticamera: ocra, legata al nido ma riconoscibile
     schermo: new THREE.MeshStandardMaterial({ color: 0xb08a5a, roughness: 0.8, side: THREE.DoubleSide }),
-    membrana: new THREE.MeshStandardMaterial({ color: 0x8a7a66, roughness: 0.7, transparent: true, opacity: 0.7 }),
+    membrana: new THREE.MeshStandardMaterial({ color: 0x9b8b74, roughness: 0.5, transparent: true, opacity: 1 }),
     asse: new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xe9eef2, emissiveIntensity: 1.0 }),
-    bone: new THREE.MeshStandardMaterial({ color: 0xc4b9a6, roughness: 0.7, clippingPlanes: cut }),
+    bone: new THREE.MeshStandardMaterial({ color: 0xc4b9a6, roughness: 0.7 }), // mai sezionate: restano tutte dietro il taglio
     corr: new THREE.MeshStandardMaterial({ color: 0x3b332c, roughness: 0.85, side: THREE.DoubleSide }),
     caldo: new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffaa62, emissiveIntensity: 1.5 }),
   };
@@ -45,21 +49,49 @@ export function costruisci(scene, { low = false } = {}) {
   const OSSA = []; // posizioni per le parole del corpo
   {
     const n = low ? 120 : 220, im = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 18, 12), M.bone, n), o = new THREE.Object3D();
-    for (let i = 0; i < n; i++) { o.position.set(-260 + rnd() * 560, FOND + 0.4, -220 + rnd() * (TAGLIO + 220)); const s = 3 + rnd() * 10; o.scale.set(s * (1 + rnd() * 1.4), s * 0.5, s); o.rotation.y = rnd() * 3; o.updateMatrix(); im.setMatrixAt(i, o.matrix); if (OSSA.length < 7 && o.position.z > 20 && o.position.x > -120 && o.position.x < 200) OSSA.push(o.position.clone().setY(FOND + 4)); }
+    for (let i = 0; i < n; i++) {
+      const s = 3 + rnd() * 10, sx = s * (1 + rnd() * 1.4); o.scale.set(sx, s * 0.5, s); o.rotation.y = rnd() * 3;
+      // intere: il punto più vicino al taglio resta almeno 1.5 m dietro
+      const zMax = TAGLIO - 1.5 - Math.max(sx, s); o.position.set(-260 + rnd() * 560, FOND + 0.4, -220 + rnd() * (zMax + 220));
+      o.updateMatrix(); im.setMatrixAt(i, o.matrix); if (OSSA.length < 7 && o.position.z > 14 && o.position.x > -120 && o.position.x < 200) OSSA.push(o.position.clone().setY(FOND + 4)); }
     shade(im); im.computeBoundingSphere(); FONDA.add(im);
   }
 
   /* ---------- l'acqua del serbatoio ---------- */
   const ripple = canvasTex(512, 512, (g, w, h) => { const img = g.createImageData(w, h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = Math.sin(x * 0.07 + Math.sin(y * 0.05) * 2) * 0.5 + Math.sin((x + y) * 0.11) * 0.3 + Math.sin(y * 0.19 - x * 0.03) * 0.2; const i = (y * w + x) * 4; img.data[i] = 128 + v * 40; img.data[i + 1] = 128 + Math.cos(y * 0.06 + x * 0.02) * 40; img.data[i + 2] = 255; img.data[i + 3] = 255; } g.putImageData(img, 0, 0); }, [60, 60], false);
-  const waterMat = new THREE.MeshStandardMaterial({ color: 0x4f6266, roughness: 0.1, metalness: 0.3, normalMap: ripple, normalScale: new THREE.Vector2(0.35, 0.35), transparent: true, opacity: 0.62, clippingPlanes: cut, depthWrite: false });
-  const surf = add(new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), waterMat), SOTTO, 0, -3, 0); surf.rotation.x = -Math.PI / 2; surf.renderOrder = 2;
+  // l'acqua: ben sotto la pellicola (niente sfarfallio fra le due) e quasi opaca: dall'alto il fondo non traspare
+  const WY = -7;
+  const waterMat = new THREE.MeshStandardMaterial({ color: 0x4f6266, roughness: 0.1, metalness: 0.3, normalMap: ripple, normalScale: new THREE.Vector2(0.35, 0.35), transparent: true, opacity: 0.9, clippingPlanes: cut, depthWrite: false });
+  const surf = add(new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), waterMat), SOTTO, 0, WY, 0); surf.rotation.x = -Math.PI / 2; surf.renderOrder = 2;
   // il corpo d'acqua sul taglio: scurisce in profondità. Altezza 1, scalata a ogni fotogramma fino alle fondamenta
   const faceG = new THREE.PlaneGeometry(3000, 1, 1, 16); faceG.translate(0, -0.5, 0);
   { const col = []; for (let i = 0; i < faceG.attributes.position.count; i++) { const t = faceG.attributes.position.getY(i) + 1; const c = new THREE.Color(0x15202a).lerp(new THREE.Color(0x7b9a9c), Math.pow(t, 1.4)); col.push(c.r, c.g, c.b); } faceG.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); }
   const face = add(new THREE.Mesh(faceG, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false })), scene, 0, 0, TAGLIO + 0.2); face.renderOrder = 3;
   const menisco = add(new THREE.Mesh(new THREE.PlaneGeometry(3000, 0.25), new THREE.MeshBasicMaterial({ color: 0xe9efed })), scene, 0, 0, TAGLIO + 0.25);
-  // particelle sospese, vicino al taglio, ben visibili
-  const motes = (() => { const pp = []; for (let i = 0; i < (low ? 900 : 2200); i++) pp.push(-220 + rnd() * 500, rnd(), 10 + rnd() * (TAGLIO - 12)); const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); return add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xe8f0ee, size: 0.6, transparent: true, opacity: 0.75, depthWrite: false })), scene, 0, 0, 0); })();
+  // particelle sospese: in tutta l'acqua e, rade, nell'aria intorno all'edificio. Moto browniano calcolato nella GPU
+  // (somma di oscillazioni con fasi casuali: ogni particella vaga senza meta, nessun calcolo per fotogramma)
+  const motoU = { uT: { value: 0 }, uAtt: { value: 0.4 }, uBot: { value: FOND + 1 }, uTop: { value: -10 }, uPR: { value: 1 } };
+  const dot = canvasTex(64, 64, (g) => { const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.4, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); }, null, false);
+  function polvere(n, box, acqua, col, size) {
+    const pos = [], ph = [];
+    for (let i = 0; i < n; i++) { pos.push(box[0] + rnd() * (box[1] - box[0]), acqua ? rnd() : box[2] + rnd() * (box[3] - box[2]), box[4] + rnd() * (box[5] - box[4])); ph.push(rnd() * 100, rnd() * 100, rnd() * 100, 0.5 + rnd()); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('ph', new THREE.Float32BufferAttribute(ph, 4));
+    g.boundingSphere = new THREE.Sphere(V(0, 0, 0), 4000);
+    const mat = new THREE.ShaderMaterial({ uniforms: { ...motoU, uMap: { value: dot }, uCol: { value: new THREE.Color(col) }, uSize: { value: size }, uAcqua: { value: acqua ? 1 : 0 } },
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: `uniform float uT,uAtt,uBot,uTop,uPR,uSize,uAcqua;attribute vec4 ph;varying float vA;
+        vec3 vaga(vec4 p,float t){return vec3(sin(t*.23+p.x)+.5*sin(t*.61+p.y*1.3)+.25*sin(t*1.37+p.z*1.7),sin(t*.19+p.y)+.5*sin(t*.53+p.z*1.1)+.25*sin(t*1.21+p.x*1.9),sin(t*.27+p.z)+.5*sin(t*.67+p.x*.9)+.25*sin(t*1.43+p.y*1.5));}
+        void main(){vec3 q=position;if(uAcqua>.5)q.y=mix(uBot,uTop,q.y);
+          float t=uT*(.35+1.4*uAtt)*ph.w;q+=vaga(ph,t)*(1.2+2.5*uAtt);
+          if(uAcqua>.5){q.y=clamp(q.y,uBot,uTop);q.z=min(q.z,53.6);}
+          vec4 mv=modelViewMatrix*vec4(q,1.);gl_Position=projectionMatrix*mv;gl_PointSize=uSize*uPR*(300./-mv.z);
+          vA=(.55+.45*sin(t*1.7+ph.x))*smoothstep(4000.,300.,-mv.z);}`,
+      fragmentShader: `uniform sampler2D uMap;uniform vec3 uCol;varying float vA;void main(){float a=texture2D(uMap,gl_PointCoord).a;gl_FragColor=vec4(uCol*a*vA,a*vA);}` });
+    const pts = new THREE.Points(g, mat); pts.frustumCulled = false; pts.renderOrder = 4; scene.add(pts); return pts;
+  }
+  polvere(low ? 1600 : 4000, [-280, 320, 0, 0, -230, TAGLIO - 0.5], true, 0xdde8e6, 1.5);       // nell'acqua
+  const aria = polvere(low ? 500 : 1300, [-200, 260, -10, 110, -140, 110], false, 0xf3e3c4, 1.6); // nell'aria, segue il livello
+  SOPRA.attach(aria);
 
   /* ---------- i quattro appoggi: tronchi rossi; sopra, una pellicola blu che poggia sulle loro cime ---------- */
   const ALBERI = [[-95, 8], [-8, 36], [80, 4], [165, 18]];
@@ -74,11 +106,25 @@ export function costruisci(scene, { low = false } = {}) {
   const filmG = new THREE.PlaneGeometry(FW, FD, low ? 90 : 140, low ? 46 : 72); filmG.rotateX(-Math.PI / 2);
   const filmBase = Float32Array.from(filmG.attributes.position.array);
   const filmMat = new THREE.MeshStandardMaterial({ color: 0x2f6db5, roughness: 0.18, metalness: 0.15, transparent: false, opacity: 1, side: THREE.DoubleSide, clippingPlanes: cut });
+  // un'onda di luce attraversa la pellicola a ritmo: più rapida con l'attivazione, il colore segue la valenza
+  const ondaU = { uT: { value: 0 }, uOndaCol: { value: new THREE.Color(0x9fd4ff) } };
+  filmMat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, ondaU);
+    sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvWP=(modelMatrix*vec4(transformed,1.)).xyz;');
+    sh.fragmentShader = 'uniform float uT;uniform vec3 uOndaCol;varying vec3 vWP;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>',
+      `#include <emissivemap_fragment>
+      float fr=dot(vWP.xz,vec2(.8,.6))*.018-uT;
+      float on=pow(.5+.5*sin(fr),14.)+.45*pow(.5+.5*sin(fr*.5+1.7+vWP.z*.004),22.);
+      totalEmissiveRadiance+=uOndaCol*on*.55;`);
+  };
   const film = shade(add(new THREE.Mesh(filmG, filmMat), SOTTO, FC.x, 0, FC.z));
   const filmDeep = new THREE.Color(0x1d3c73), filmLight = new THREE.Color(0x5aa0d6);
 
   /* ---------- la rupe della Soglia, la Soglia, il passaggio, la scala ---------- */
-  { const r = box(70, Q - FOND + 24, 40, M.basalt, SOPRA, SX, (Q + FOND - 24) / 2, 0); r.material = [M.basalt, M.basalt, M.top, M.basalt, M.basalt, M.basalt]; }
+  if (env) { M.lucido.envMap = env; M.top.envMap = env; }
+  // il parallelepipedo: pieno fino a z = ZS; davanti, la fascia della scala, scavata per sottrazione
+  const ZS = 13, ZF = 20, YB = FOND - 24; // ZS: fondo dello scavo; ZF: la faccia
+  { const r = box(70, Q - YB, ZS + 20, M.lucido, SOPRA, SX, (Q + YB) / 2, (ZS - 20) / 2); r.material = [M.lucido, M.lucido, M.top, M.lucido, M.lucido, M.lucido]; }
   const bladeTex = canvasTex(256, 64, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, 'rgba(250,244,232,0.95)'); gr.addColorStop(0.35, 'rgba(240,232,215,0.35)'); gr.addColorStop(1, 'rgba(235,225,205,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); const v = g.createLinearGradient(0, 0, 0, h); v.addColorStop(0, 'rgba(0,0,0,.7)'); v.addColorStop(0.15, 'rgba(0,0,0,0)'); v.addColorStop(0.85, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.7)'); g.globalCompositeOperation = 'destination-out'; g.fillStyle = v; g.fillRect(0, 0, w, h); });
   const bladeMat = (op) => new THREE.MeshBasicMaterial({ map: bladeTex, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
   const SOGLIA_X = [-20, 0, 20].map((d) => SX + d); // tutti e tre dentro il profilo della rupe
@@ -93,10 +139,21 @@ export function costruisci(scene, { low = false } = {}) {
   const NECK0 = V(GX - 52, Q, 0);
   box(400, 1.0, 3.0, M.basalt, SOPRA, SX - 36 - 200, Q - 0.5, 0);
   box(NECK0.x - (SX + 36), 1.0, 3.0, M.basalt, SOPRA, (SX + 36 + NECK0.x) / 2, Q - 0.5, 0);
-  // l'unica scala: dritta, lungo la faccia della rupe, fino al livello del piano di sotto
-  { const steps = 56, im = new THREE.InstancedMesh(new THREE.BoxGeometry(2.4, 0.45, 3.4), M.basalt, steps), o = new THREE.Object3D();
-    for (let i = 0; i < steps; i++) { const t = i / (steps - 1); o.position.set(SX + 30 - t * 60, Q - 0.25 - t * (Q - 0.6), 21.8); o.updateMatrix(); im.setMatrixAt(i, o.matrix); }
-    shade(im); im.computeBoundingSphere(); SOPRA.add(im); }
+  // l'unica scala: dritta, un pieno svuotato. La fascia davanti al parallelepipedo è tolta sopra la linea dei gradini:
+  // resta il pieno sotto, gradinato. Alzate rosse come i tronchi, pedate blu come il piano di sotto
+  const SCALA = { x0: SX + 30, x1: SX - 30, y1: 0.4, n: 100, z: (ZS + ZF) / 2 };
+  { const { x0, x1, y1, n } = SCALA, run = (x0 - x1) / n, rise = (Q - y1) / n;
+    const sh = new THREE.Shape(); sh.moveTo(SX - 35, YB); sh.lineTo(SX + 35, YB); sh.lineTo(SX + 35, Q); sh.lineTo(x0, Q);
+    for (let i = 0; i < n; i++) { const y = Q - (i + 1) * rise, x = x0 - i * run; sh.lineTo(x, y); sh.lineTo(x - run, y); }
+    sh.lineTo(SX - 35, y1); sh.closePath();
+    const g = new THREE.ExtrudeGeometry(sh, { depth: ZF - ZS, bevelEnabled: false, curveSegments: 1 }); g.translate(0, 0, ZS);
+    shade(add(new THREE.Mesh(g, M.lucido), SOPRA));
+    const w = ZF - ZS - 0.02, o = new THREE.Object3D();
+    const ped = new THREE.InstancedMesh(new THREE.BoxGeometry(run, 0.06, w), M.pedata, n), alz = new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, rise, w), M.alzata, n);
+    for (let i = 0; i < n; i++) { const y = Q - (i + 1) * rise, x = x0 - i * run;
+      o.position.set(x - run / 2, y + 0.03, SCALA.z); o.updateMatrix(); ped.setMatrixAt(i, o.matrix);
+      o.position.set(x - 0.03, y + rise / 2, SCALA.z); o.updateMatrix(); alz.setMatrixAt(i, o.matrix); }
+    for (const im of [ped, alz]) { im.receiveShadow = true; im.computeBoundingSphere(); SOPRA.add(im); } }
 
   /* ---------- il nido: un uovo in piedi, intrecciato ---------- */
   const fibre = [];
@@ -115,11 +172,22 @@ export function costruisci(scene, { low = false } = {}) {
     }
   }
   corpo(NC, 20, 1.45, low ? 160 : 260, V(0.4, 0.5, -0.7).normalize(), 0.28, 0.42);
-  const OTTO = [];
+  // le otto camere chiuse: otto semi uguali, a passo regolare intorno alla metà bassa dell'uovo, le opposte una di fronte all'altra.
+  // Il collo d'ingresso passa fra due di loro. Guscio liscio, sei nervature: si leggono una per una
+  const OTTO = [], PODS = [];
+  const podL = 15, podProf = [];
+  for (let i = 0; i <= 24; i++) { const u = i / 24; podProf.push(new THREE.Vector2(Math.max(0.001, 6.2 * Math.pow(Math.sin(Math.PI * Math.min(1, u * 0.92 + 0.04)), 0.75) * (0.5 + 0.5 * u)), u * podL)); }
+  const podG = new THREE.LatheGeometry(podProf, 40);
   for (let k = 0; k < 8; k++) {
-    const a = (k / 8) * Math.PI * 2 + 0.25, el = (k % 2 ? -0.42 : -0.66) + 0.06 * Math.sin(k * 1.7);
-    const dir = V(Math.cos(a) * Math.cos(el), Math.sin(el), Math.sin(a) * Math.cos(el)); if (dir.x < -0.7) dir.x = -0.7; dir.normalize();
-    const c = NC.clone().add(V(dir.x * 29, dir.y * 22, dir.z * 29)); /* fuori dalla parete della stanza */ corpo(c, 5 + rnd() * 2.5, 1.15, low ? 36 : 56, dir, 0.9, 0.3); OTTO.push(c);
+    const a = Math.PI + Math.PI / 8 + (k / 8) * Math.PI * 2, el = -0.32;
+    const d = V(Math.cos(a) * Math.cos(el), Math.sin(el), Math.sin(a) * Math.cos(el));
+    const r = 20 * (1 - 0.16 * d.y) * 0.9, base = NC.clone().add(V(d.x * r, d.y * r * 1.45, d.z * r));
+    const ax = V(d.x, d.y * 0.5, d.z).normalize(), q = new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), ax);
+    PODS.push({ base, q }); OTTO.push(base.clone().addScaledVector(ax, podL * 0.55));
+    // le nervature: meridiani del seme, appena fuori dal guscio, nel colore delle fibre del nido
+    for (let m = 0; m < 6; m++) { const ph = (m / 6) * Math.PI * 2 + k * 0.3, pts = [];
+      for (const v of podProf) { const rr = v.x + 0.18; pts.push(V(Math.cos(ph) * rr, v.y, Math.sin(ph) * rr).applyQuaternion(q).add(base)); }
+      fibre.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 30, 0.22, 4, false)); }
   }
   const nest = shade(add(new THREE.Mesh(mergeGeometries(fibre), M.fibre), SOPRA)); fibre.forEach((f) => f.dispose());
   // il collo d'ingresso: l'anticamera, ocra
@@ -142,8 +210,8 @@ export function costruisci(scene, { low = false } = {}) {
   const warm = new THREE.PointLight(0xffaa62, 700, 130, 1.6); warm.position.copy(NC); SOPRA.add(warm);
   add(new THREE.Mesh(new THREE.CylinderGeometry(16, 16, 0.6, 48), M.basalt), SOPRA, NC.x, Q - 0.3, NC.z);
   const anelli = [0, 1, 2, 3].map((i) => { const m = add(new THREE.Mesh(new THREE.TorusGeometry(3 + i * 3, 0.14, 6, 96), new THREE.MeshBasicMaterial({ color: 0xffd6a8, transparent: true, opacity: 0.6 })), SOPRA, NC.x, Q + 0.05, NC.z); m.rotation.x = Math.PI / 2; return m; });
-  // le otto camere chiuse: membrane
-  const membrane = OTTO.map((c) => add(new THREE.Mesh(new THREE.SphereGeometry(3.6, 24, 16), M.membrana), SOPRA, c.x, c.y, c.z));
+  // le otto camere chiuse: i gusci
+  const membrane = PODS.map(({ base, q }) => { const m = shade(add(new THREE.Mesh(podG, M.membrana), SOPRA, base.x, base.y, base.z)); m.quaternion.copy(q); return m; });
   // i quattro assi: fibre tese, chiare, fra le opposte
   for (let k = 0; k < 4; k++) { const a = OTTO[k], b = OTTO[k + 4], len = a.distanceTo(b) + 14, mid = a.clone().add(b).multiplyScalar(0.5); const m = add(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, len, 6), M.asse), SOPRA, mid.x, mid.y, mid.z); m.quaternion.setFromUnitVectors(V(0, 1, 0), b.clone().sub(a).normalize()); }
   // il corridoio: una galleria esterna che gira intorno a tutte le camere
@@ -161,7 +229,7 @@ export function costruisci(scene, { low = false } = {}) {
     circ(NC.x, NC.z, 20, 20); for (const c of OTTO) circ(c.x, c.z, 6, 6); circ(NC.x, NC.z, 34, 30);
     pianta.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(NECK.getPoints(40).map((p) => V(p.x, 0, p.z))), lm));
     const rect = (x, z, w, d) => pianta.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([V(x - w / 2, 0, z - d / 2), V(x + w / 2, 0, z - d / 2), V(x + w / 2, 0, z + d / 2), V(x - w / 2, 0, z + d / 2)]), lm));
-    rect(SX, 0, 70, 40); SOGLIA_X.forEach((x) => { rect(x, -6.3, 2.8, 11.4); rect(x, 6.3, 2.8, 11.4); });
+    rect(SX, 0, 70, 40); rect(SX, 16.5, 60, 7); SOGLIA_X.forEach((x) => { rect(x, -6.3, 2.8, 11.4); rect(x, 6.3, 2.8, 11.4); });
     pianta.position.y = Q + 0.3; pianta.userData.mat = lm; }
 
   /* ---------- bersagli del tocco (invisibili) e punti delle etichette ---------- */
@@ -172,14 +240,14 @@ export function costruisci(scene, { low = false } = {}) {
   proxy(new THREE.SphereGeometry(19, 20, 14), SOPRA, NC.x, NC.y, NC.z, 'stanza');
   proxy(new THREE.CylinderGeometry(5, 5, 32, 10), SOPRA, GX - 36, Q + 2, -1.5, 'anticamera').rotation.z = Math.PI / 2;
   proxy(new THREE.SphereGeometry(4.5, 10, 8), SOPRA, MZ.x, MZ.y, MZ.z, 'mezzanino');
-  proxy(new THREE.BoxGeometry(14, 4, 60), SOPRA, SX + 30, Q - 12, 21.8, 'vie');
+  proxy(new THREE.BoxGeometry(62, 8, 8), SOPRA, SX, Q / 2, 16.5, 'vie').rotation.z = Math.atan2(Q, 60);
   proxy(new THREE.BoxGeometry(600, 2, 300), SOTTO, 0, 0, -100, 'sotto');
   proxy(new THREE.BoxGeometry(600, 10, 300), scene, 0, FOND - 2, -100, 'fondamenta');
   for (const k of [0, 16, 32, 48]) { const p = CORR.getPoint(0.15 + k / 64 * 0.7); proxy(new THREE.SphereGeometry(4, 8, 6), SOPRA, p.x, p.y, p.z, 'corridoio'); }
 
   const ANCORE = {
     soglia: [SOPRA, V(SX, Q + 33, 0)], stanza: [SOPRA, V(NC.x, NC.y + 34, NC.z)], anticamera: [SOPRA, V(GX - 40, Q + 9, 0)],
-    corridoio: [SOPRA, CORR.getPoint(0.55).add(V(0, 4, 0))], mezzanino: [SOPRA, V(MZ.x + 12, MZ.y + 2, MZ.z + 10)], vie: [SOPRA, V(SX + 30, Q - 14, 26)],
+    corridoio: [SOPRA, CORR.getPoint(0.55).add(V(0, 4, 0))], mezzanino: [SOPRA, V(MZ.x + 12, MZ.y + 2, MZ.z + 10)], vie: [SOPRA, V(SX + 6, Q / 2 + 8, 22)],
     sotto: [SOTTO, V(40, 3, 40)], fondamenta: [scene, V(70, FOND + 6, 45)], struttura: [SOPRA, V(NC.x - 50, Q + 2, NC.z + 36)],
   };
   const CHIUSE = OTTO.map((c) => [SOPRA, c.clone().add(V(0, -8, 0))]);
@@ -187,9 +255,9 @@ export function costruisci(scene, { low = false } = {}) {
   const CORPO = OSSA.map((p) => [scene, p]);
 
   /* ---------- stato e aggiornamento (nessuna allocazione qui dentro) ---------- */
-  const S0 = { quota: 0.5, ampiezza: 0.5, valenza: 0.5, attivazione: 0.4, appoggi: [true, true, true, true], allinea: 0, struttura: 0, liv: 0, fessure: [0, 0, 0], allinea3: 0 };
+  const S0 = { quota: 0.5, ampiezza: 0.5, valenza: 0.5, attivazione: 0.4, appoggi: [true, true, true, true], allinea: 0, struttura: 0, liv: 0, fessure: [0, 0, 0], allinea3: 1 };
   const cold = new THREE.Color(0x3e5664), warmW = new THREE.Color(0x6b5a44), tmpC = new THREE.Color();
-  let ripT = 0, porte = 0, liv = 0, fframe = 0;
+  let ripT = 0, porte = 0, liv = 0, fframe = 0, ondaT = 0; const ondaFredda = new THREE.Color(0x7fc4ff), ondaCalda = new THREE.Color(0xffd9a0);
   function aggiorna(dt, t, st) {
     // il livello: la quota lo fissa, ogni appoggio tolto lo fa scendere; una vasca grande cambia meno e più lenta
     let tolti = 0; for (let i = 0; i < 4; i++) { const a = alberi[i]; const target = st.appoggi[i] ? 1 : 0; a.presente += (target - a.presente) * Math.min(1, dt * 1.2); if (!st.appoggi[i]) tolti++; }
@@ -197,8 +265,8 @@ export function costruisci(scene, { low = false } = {}) {
     const k = Math.min(1, dt * (1.6 - 1.1 * st.ampiezza));
     liv += (base - calo - liv) * k; st.liv = liv;
     SOPRA.position.y = liv; SOTTO.position.y = liv;
-    face.scale.y = Math.max(0.01, liv - 3 - FOND); face.position.y = liv - 3; menisco.position.y = liv - 3.12;
-    motes.scale.y = Math.max(0.01, liv - 5 - FOND); motes.position.y = FOND + 1;
+    face.scale.y = Math.max(0.01, liv + WY - FOND); face.position.y = liv + WY; menisco.position.y = liv + WY - 0.12;
+    motoU.uT.value = t; motoU.uAtt.value = st.attivazione; motoU.uTop.value = liv + WY - 0.6;
     // i tronchi: dalle fondamenta alla pellicola; quello tolto si ritira verso il basso
     const span = Math.max(1, liv - 2.2 - FOND);
     for (let i = 0; i < 4; i++) { const a = alberi[i]; a.trunk.scale.set(1, span * (0.25 + 0.75 * a.presente), 1); a.trunk.position.y = -2.2 - span * 0.75 * (1 - a.presente); }
@@ -215,11 +283,12 @@ export function costruisci(scene, { low = false } = {}) {
     // le fondamenta cedono sotto la riserva: le porte di sopra smettono di chiudere
     const riserva = liv < -9 ? 1 : 0; porte += (riserva - porte) * Math.min(1, dt * 1.5);
     FONDA.position.y = -1.2 * porte;
-    for (let i = 0; i < membrane.length; i++) { const s = 1 + porte * 0.25 * Math.sin(t * 2.2 + i); membrane[i].scale.set(s, s, s); }
+    for (let i = 0; i < membrane.length; i++) { const s = 1 + porte * 0.12 * Math.sin(t * 2.2 + i); membrane[i].scale.set(s, s, s); }
     // valenza: il colore dell'acqua; attivazione: il moto della superficie e dei rami
     tmpC.copy(cold).lerp(warmW, st.valenza); waterMat.color.copy(tmpC); filmMat.color.copy(filmDeep).lerp(filmLight, st.valenza);
+    ondaT += dt * (0.5 + 2.2 * st.attivazione); ondaU.uT.value = ondaT; ondaU.uOndaCol.value.copy(ondaFredda).lerp(ondaCalda, st.valenza);
     ripT += dt * (0.02 + 0.18 * st.attivazione); ripple.offset.set(ripT, ripT * 0.6); waterMat.normalScale.set(0.2 + 0.6 * st.attivazione, 0.2 + 0.6 * st.attivazione);
-    // il terzo monolite: le due metà sfalsate scorrono fino ad allinearsi quando le componenti si muovono insieme
+    // il terzo monolite: a riposo è simmetrico come gli altri; durante lo Smistamento le metà si sfalsano e, se la risposta è sì, si riallineano
     META[2][1].position.x = SOGLIA_X[2] + 2.6 * (1 - st.allinea3);
     // gli schermi dell'anticamera: sfalsati, o allineati (la porta si apre)
     for (let i = 0; i < 3; i++) { const s = schermi[i]; s.m.rotation.set(0, Math.PI / 2, s.sfalsa * (1 - st.allinea) + porte * 0.3 * Math.sin(t * 1.7 + i)); }
@@ -227,9 +296,9 @@ export function costruisci(scene, { low = false } = {}) {
     core.material.emissiveIntensity = 1.3 + 0.25 * Math.sin(t * 0.9) + 0.6 * st.allinea;
     for (let i = 0; i < 4; i++) anelli[i].material.opacity = 0.35 + 0.25 * Math.sin(t * 0.8 - i * 0.8);
     // la struttura: la pelle si fa trasparente, compare la pianta
-    M.fibre.opacity = 1 - 0.85 * st.struttura; M.fibre.depthWrite = st.struttura < 0.5; pianta.userData.mat.opacity = st.struttura;
+    M.fibre.opacity = 1 - 0.85 * st.struttura; M.fibre.depthWrite = st.struttura < 0.5; M.membrana.opacity = 1 - 0.85 * st.struttura; M.membrana.depthWrite = st.struttura < 0.5; pianta.userData.mat.opacity = st.struttura;
     for (let i = 0; i < lame.length; i++) lame[i].material.opacity = Math.min(1, (i % 2 ? 0.4 : 0.32) * (0.85 + 0.15 * Math.sin(t * 0.6 + i)) * (1 + 1.8 * st.fessure[i >> 1]));
   }
 
-  return { SOPRA, SOTTO, aggiorna, S0, objectsToIntersect, ANCORE, CHIUSE, APPOGGI, CORPO, NECK, CORR, SOGLIA_X, NECK0, MZ, alberi };
+  return { motoU, SOPRA, SOTTO, aggiorna, S0, objectsToIntersect, ANCORE, CHIUSE, APPOGGI, CORPO, NECK, CORR, SOGLIA_X, NECK0, MZ, alberi, SCALA };
 }
