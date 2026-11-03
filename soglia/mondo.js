@@ -65,10 +65,10 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   /* ---------- l'acqua del serbatoio ---------- */
   const ripple = canvasTex(512, 512, (g, w, h) => { const img = g.createImageData(w, h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = Math.sin(x * 0.07 + Math.sin(y * 0.05) * 2) * 0.5 + Math.sin((x + y) * 0.11) * 0.3 + Math.sin(y * 0.19 - x * 0.03) * 0.2; const i = (y * w + x) * 4; img.data[i] = 128 + v * 40; img.data[i + 1] = 128 + Math.cos(y * 0.06 + x * 0.02) * 40; img.data[i + 2] = 255; img.data[i + 3] = 255; } g.putImageData(img, 0, 0); }, [60, 60], false);
   // l'acqua: ben sotto la pellicola (niente sfarfallio fra le due) e quasi opaca: dall'alto il fondo non traspare
-  const WY = -7;
+  const WY = 0; // la superficie dell'acqua coincide con il pavimento blu
   const waterMat = new THREE.MeshStandardMaterial({ color: 0x4f6266, roughness: 0.1, metalness: 0.3, normalMap: ripple, normalScale: new THREE.Vector2(0.35, 0.35), transparent: true, opacity: 0.9, clippingPlanes: cut, depthWrite: false });
   // il serbatoio: un rettangolo in pianta centrato sull'asse del passaggio, fra la Soglia e il nido. L'ampiezza lo allarga
-  const surf = add(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), waterMat), SOTTO, BC.x, WY, BC.z); surf.rotation.x = -Math.PI / 2; surf.renderOrder = 2;
+  const surf = add(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), waterMat), SOTTO, BC.x, WY, BC.z); surf.rotation.x = -Math.PI / 2; surf.renderOrder = 2; surf.visible = false; // la superficie è il pavimento stesso
   // il corpo d'acqua sul taglio: scurisce in profondità. Altezza 1, scalata a ogni fotogramma fino alle fondamenta
   const faceG = new THREE.PlaneGeometry(1, 1, 1, 16); faceG.translate(0, -0.5, 0);
   { const col = []; for (let i = 0; i < faceG.attributes.position.count; i++) { const t = faceG.attributes.position.getY(i) + 1; const c = new THREE.Color(0x15202a).lerp(new THREE.Color(0x7b9a9c), Math.pow(t, 1.4)); col.push(c.r, c.g, c.b); } faceG.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); }
@@ -111,8 +111,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   });
   // la pellicola: tesa sulle cime dei tronchi, si affloscia fra l'uno e l'altro
   const FC = V(BC.x, 0, BC.z), FW = 2 * BX - 20, FD = 2 * BZ - 8;
-  const filmG = new THREE.PlaneGeometry(FW, FD, low ? 90 : 140, low ? 46 : 72); filmG.rotateX(-Math.PI / 2);
-  const filmBase = Float32Array.from(filmG.attributes.position.array);
+  const filmG = new THREE.PlaneGeometry(1, 1); filmG.rotateX(-Math.PI / 2); // piano: combacia con il volume d'acqua, si scala con l'ampiezza
   const filmMat = new THREE.MeshStandardMaterial({ color: 0x2f6db5, roughness: 0.18, metalness: 0.15, transparent: false, opacity: 1, side: THREE.DoubleSide, clippingPlanes: cut });
   // un'onda di luce attraversa la pellicola a ritmo: più rapida con l'attivazione, il colore segue la valenza
   const ondaU = { uT: { value: 0 }, uOndaCol: { value: new THREE.Color(0x9fd4ff) } };
@@ -149,7 +148,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   box(NECK0.x - (SX + 36), 1.0, 3.0, M.basalt, SOPRA, (SX + 36 + NECK0.x) / 2, Q - 0.5, 0);
   // l'unica scala: dritta, un pieno svuotato. La fascia davanti al parallelepipedo è tolta sopra la linea dei gradini:
   // resta il pieno sotto, gradinato. Alzate rosse come i tronchi, pedate blu come il piano di sotto
-  const SCALA = { x0: SX + 30, x1: SX - 30, y1: PIANO + 0.4, n: 100, z: (ZS + ZF) / 2 };
+  const SCALA = { x0: SX + 30, x1: SX - 30, y1: FOND + 0.4, n: 150, z: (ZS + ZF) / 2 };
   { const { x0, x1, y1, n } = SCALA, run = (x0 - x1) / n, rise = (Q - y1) / n;
     const sh = new THREE.Shape(); sh.moveTo(SX - 35, YB); sh.lineTo(SX + 35, YB); sh.lineTo(SX + 35, Q); sh.lineTo(x0, Q);
     for (let i = 0; i < n; i++) { const y = Q - (i + 1) * rise, x = x0 - i * run; sh.lineTo(x, y); sh.lineTo(x - run, y); }
@@ -321,7 +320,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
     const k = Math.min(1, dt * (1.6 - 1.1 * st.ampiezza));
     liv += (base - calo - liv) * k;
     // sopra resta fermo; il pavimento (e l'acqua, i tronchi) segue il livello, senza scendere sotto le fondamenta
-    const yS = Math.max(FOND + 9, PIANO + liv); st.liv = 0; st.sotto = yS; st.livello = liv;
+    const yS = Math.max(FOND + 3, PIANO + liv); // a zero il pavimento posa sui sassi: il serbatoio è a secco st.liv = 0; st.sotto = yS; st.livello = liv;
     SOPRA.position.y = 0; SOTTO.position.y = yS;
     { const sc = 0.75 + 0.5 * st.ampiezza, hx = BX * sc, hz = BZ * sc, zf = Math.min(TAGLIO, hz), h = Math.max(0.01, yS + WY - FOND), y = yS + WY;
       surf.scale.set(2 * hx, 2 * hz, 1);
@@ -329,21 +328,11 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
       pareti[1].position.set(BC.x, y, -hz); pareti[1].scale.set(2 * hx, h, 1);
       pareti[2].position.set(BC.x - hx, y, (zf - hz) / 2); pareti[2].scale.set(zf + hz, h, 1);
       pareti[3].position.set(BC.x + hx, y, (zf - hz) / 2); pareti[3].scale.set(zf + hz, h, 1);
-      menisco.position.set(BC.x, y - 0.12, zf + 0.25); menisco.scale.x = 2 * hx; fondaBox.scale.set(2 * hx, 1, zf + hz); fondaBox.position.z = (zf - hz) / 2; motoU.uBox.value.set(BC.x - hx, BC.x + hx, -hz, zf - 0.5); }
+      menisco.position.set(BC.x, y - 0.12, zf + 0.25); menisco.scale.x = 2 * hx; film.scale.set(2 * hx, 1, zf + hz); film.position.set(BC.x, 0, (zf - hz) / 2); fondaBox.scale.set(2 * hx, 1, zf + hz); fondaBox.position.z = (zf - hz) / 2; motoU.uBox.value.set(BC.x - hx, BC.x + hx, -hz, zf - 0.5); }
     motoU.uT.value = t; motoU.uAtt.value = st.attivazione; motoU.uTop.value = yS + WY - 0.6;
     // i tronchi: dalle fondamenta alla pellicola; quello tolto si ritira verso il basso
-    const span = Math.max(1, yS - 2.2 - FOND);
-    for (let i = 0; i < 4; i++) { const a = alberi[i]; a.trunk.scale.set(1, span * (0.25 + 0.75 * a.presente), 1); a.trunk.position.y = -2.2 - span * 0.75 * (1 - a.presente); }
-    // la pellicola: poggia sulle cime dei tronchi presenti; senza appoggio cede. L'ampiezza la allarga
-    if ((fframe++ & 1) === 0) {
-      const p = filmG.attributes.position.array, sc = 0.75 + 0.5 * st.ampiezza, sig2 = 2 * 42 * 42, amp = 0.35 * st.attivazione;
-      for (let v = 0; v < p.length; v += 3) {
-        const x = filmBase[v] * sc, z = filmBase[v + 2] * sc, wx = x + FC.x, wz = z + FC.z;
-        let B = 0; for (let i = 0; i < 4; i++) { const a = alberi[i], dx = wx - a.x, dz = wz - a.z; const b = a.presente * Math.exp(-(dx * dx + dz * dz) / sig2); if (b > B) B = b; }
-        p[v] = x; p[v + 2] = z; p[v + 1] = 0.5 - 3.4 * (1 - B) + amp * Math.sin(wx * 0.07 + t * 1.1) * Math.cos(wz * 0.06 + t * 0.8);
-      }
-      filmG.attributes.position.needsUpdate = true; filmG.computeVertexNormals();
-    }
+    const span = Math.max(0.5, yS - FOND);
+    for (let i = 0; i < 4; i++) { const a = alberi[i]; a.trunk.scale.set(1, span * (0.25 + 0.75 * a.presente), 1); a.trunk.position.y = -0.05 - span * 0.75 * (1 - a.presente); }
     // la canna del mezzanino: dalle fondamenta (ferme) fino al nido (che sale e scende); la brezza cresce e cala
     rodLow.scale.y = ROD.y - FOND;
     const brezza = (0.25 + 0.75 * st.attivazione) * (0.55 + 0.45 * Math.sin(t * 0.13)) * (1 + 0.25 * Math.sin(t * 1.7));

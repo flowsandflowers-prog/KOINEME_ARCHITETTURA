@@ -11,11 +11,11 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { createPicker } from '../src/lib/picker.js';
 import { disposeObject } from '../src/lib/dispose.js';
 import { SPAZI, ORDINE, ETICHETTE, DOMANDE, DOVE_VA, VOCI, STANZE_CHIUSE, INTERFACCIA, RACCORDI, MEZZANINO_SPIEGAZIONE } from './testi.js';
-import { costruisci, Q, FOND, SX, GX, NC, PIANO } from './mondo.js';
+import { costruisci, Q, FOND, SX, GX, NC } from './mondo.js';
+import { creaMutaforma } from './mutaforma.js';
 
 const $ = (id) => document.getElementById(id);
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -103,43 +103,17 @@ async function start() {
   const ST = { ...W.S0, appoggi: [...W.S0.appoggi] };
   let allineaT = 0, strutturaT = 0;
 
-  /* ---------- le figure: pellegrini con mantello e cappuccio; scuri fuori, luminosi dopo la Soglia ---------- */
-  const mantoG = (() => {
-    const prof = [[0.001, 0], [0.47, 0], [0.45, 0.1], [0.37, 0.55], [0.28, 1.02], [0.26, 1.3], [0.31, 1.41], [0.23, 1.5], [0.13, 1.56], [0.18, 1.63], [0.2, 1.75], [0.16, 1.87], [0.07, 1.94], [0.001, 1.96]].map(([r, y]) => new THREE.Vector2(r, y));
-    const g = new THREE.LatheGeometry(prof, 32); g.scale(1, 1, 0.78); const p = g.attributes.position;
-    for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), a = Math.atan2(z, x); const f = 1 + (y < 1.3 ? 0.06 * Math.sin(a * 7 + y * 2.5) * (1.3 - y) : 0); p.setX(i, x * f); p.setZ(i, z * f); }
-    g.computeVertexNormals(); return g;
-  })();
-  const glowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(235,242,255,0.9)'); gr.addColorStop(0.35, 'rgba(210,225,255,0.3)'); gr.addColorStop(1, 'rgba(200,215,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
-  const darkM = new THREE.MeshStandardMaterial({ color: 0x1b1916, roughness: 0.6, metalness: 0.1 });
+  /* ---------- le figure umane sono tolte. Restano dei segnaposto vuoti, finché lo storyboard dello Smistamento
+     non decide chi attraversa: il codice che li muove non disegna nulla ---------- */
   const litM = new THREE.MeshStandardMaterial({ color: 0x9aa6b8, roughness: 0.6, emissive: 0xeef3ff, emissiveIntensity: 0.75 });
-  // il personaggio: X Bot dagli esempi di three.js (Mixamo), con le sue animazioni di camminata e di attesa
-  const bot = await new GLTFLoader().loadAsync('modelli/xbot.glb').catch(() => null);
-  const FIG = [];
-  function figura(lit) {
-    const g = new THREE.Group(); const meshes = []; let mixer = null, act = {};
-    if (bot) {
-      const m = SkeletonUtils.clone(bot.scene); m.traverse((o) => { if (o.isMesh) { o.material = lit ? litM : darkM; o.castShadow = true; meshes.push(o); } }); g.add(m);
-      mixer = new THREE.AnimationMixer(m); for (const c of bot.animations) act[c.name] = mixer.clipAction(c);
-      if (act.idle) act.idle.play();
-    } else { const m = new THREE.Mesh(mantoG, lit ? litM : darkM); m.castShadow = true; g.add(m); meshes.push(m); }
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: lit ? 0.6 : 0 })); glow.scale.set(3.2, 4.2, 1); glow.position.y = 1.0; g.add(glow);
-    const l = new THREE.PointLight(0xe4ecff, lit ? 5 : 0, 12, 2); l.position.y = 1.2; g.add(l);
-    let passo = false;
-    g.userData = { meshes, l, glow, mixer,
-      set(on) { for (const m of meshes) m.material = on ? litM : darkM; l.intensity = on ? 5 : 0; glow.material.opacity = on ? 0.6 : 0; },
-      // camminare o stare: dissolvenza fra le due animazioni; la velocità del passo segue quella del corpo
-      cammina(on, vel = 1.6) { if (!act.walk || on === passo) { return; } passo = on; const a = on ? act.walk : act.idle, b = on ? act.idle : act.walk; a.reset().play(); a.timeScale = 1; a.crossFadeFrom(b, 0.35, false); } };
-    scene.add(g); FIG.push(g); return g;
-  }
-  const attesa = [figura(false), figura(false)], passato = figura(true), VF = figura(false), RUM = figura(false);
-  // la figura dello Smistamento: si illumina da dentro, piano
-  const vfM = new THREE.MeshStandardMaterial({ color: 0x1b1916, roughness: 0.6, metalness: 0.1, emissive: 0xeef3ff, emissiveIntensity: 0 }); let accesa = 0, accesaT = 0;
+  function figura() { const g = new THREE.Group(); g.userData = { meshes: [], l: { intensity: 0 }, glow: { material: { opacity: 0 } }, mixer: null, set() {}, cammina() {} }; return g; }
+  const VF = figura(), RUM = figura(), FIG = [];
+  const vfM = new THREE.MeshStandardMaterial({ color: 0x1b1916 }); let accesa = 0, accesaT = 0;
   const DARK = new THREE.Color(0x1b1916), LIGHT = new THREE.Color(0x9aa6b8);
-  VF.userData.set = (on) => { for (const m of VF.userData.meshes) m.material = vfM; accesaT = on ? 1 : 0; if (!on) accesa = 0; };
-  RUM.userData.cammina(true, 1.2);
+  VF.userData.set = (on) => { accesaT = on ? 1 : 0; if (!on) accesa = 0; };
 
-  VF.visible = false; RUM.visible = false;
+  /* ---------- il mutaforma: in attesa sulla piattaforma davanti al primo passaggio; vaga e, a caso, cambia forma ---------- */
+  const MUTA = await creaMutaforma(scene, { x0: SX - 33, x1: W.SOGLIA_X[0] - 3, z0: -11, z1: 11, y: Q }).catch((e) => { console.warn(e); return null; });
 
   /* ---------- le inquadrature del racconto ---------- */
   // f: 's' = sale e scende con il livello; 'w' = fissa
@@ -176,15 +150,15 @@ async function start() {
   const testoSpazio = (k) => { const s = SPAZI[k]; return [s.nome + '.', ...s.testo, ...(s.formula ? [s.formula] : [])].join(' '); };
   $('voce').addEventListener('click', () => { voiceOn = !voiceOn; $('voce').setAttribute('aria-pressed', voiceOn); if (!voiceOn) { try { speechSynthesis.cancel(); } catch (e) {} if (audio) audio.pause(); } });
 
-  /* ---------- il tappeto sonoro: la musica scelta (suono/tappeto.mp3), in loop; un filtro la scurisce quando il pavimento scende ---------- */
-  let AC = null, master, filt, musica = null, soundOn = false;
+  /* ---------- il tappeto sonoro: un bordone grave che segue il livello ---------- */
+  let AC = null, master, filt, lfoG, soundOn = false;
   function initAudio() {
     AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.gain.value = 0; master.connect(AC.destination);
-    filt = AC.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 6000; filt.Q.value = 0.7; filt.connect(master);
-    musica = new Audio('suono/tappeto.mp3'); musica.loop = true; musica.crossOrigin = 'anonymous';
-    AC.createMediaElementSource(musica).connect(filt);
+    filt = AC.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 500; filt.connect(master);
+    const lfo = AC.createOscillator(); lfo.frequency.value = 0.08; lfoG = AC.createGain(); lfoG.gain.value = 120; lfo.connect(lfoG); lfoG.connect(filt.frequency); lfo.start();
+    [43.65, 65.4, 87.3, 130.8].forEach((f, i) => { const o = AC.createOscillator(); o.type = i < 2 ? 'sine' : 'triangle'; o.frequency.value = f; const g = AC.createGain(); g.gain.value = [0.28, 0.16, 0.08, 0.04][i]; o.connect(g); g.connect(filt); o.start(); });
   }
-  $('suono').addEventListener('click', () => { if (!AC) initAudio(); soundOn = !soundOn; $('suono').setAttribute('aria-pressed', soundOn); AC.resume(); if (soundOn) musica.play().catch(() => {}); master.gain.setTargetAtTime(soundOn ? 0.6 : 0, AC.currentTime, 0.8); if (!soundOn) setTimeout(() => { if (!soundOn) musica.pause(); }, 3000); });
+  $('suono').addEventListener('click', () => { if (!AC) initAudio(); soundOn = !soundOn; $('suono').setAttribute('aria-pressed', soundOn); AC.resume(); master.gain.setTargetAtTime(soundOn ? 0.35 : 0, AC.currentTime, 0.8); });
 
   /* ---------- scegliere uno spazio ---------- */
   let invitato = false;
@@ -219,7 +193,7 @@ async function start() {
     ['soglia', [SX - 29, Q + 1.7, 0], [SX + 10, Q + 11, 0], 's', 0], ['soglia', [SX - 9, Q + 1.7, 0], [SX + 30, Q + 11, 0], 's', 1], ['soglia', [SX + 11, Q + 1.7, 0], [SX + 50, Q + 11, 0], 's', 2],
     ['vie', [SX + 34, Q + 1.7, 0.5], [GX - 52, Q + 3, 0], 's'], ['anticamera', [GX - 60, Q + 1.9, 0.2], [GX - 40, Q + 2.2, -1], 's'],
     ['stanza', [NC.x - 9, Q + 1.7, NC.z + 7], [NC.x + 4, Q + 12, NC.z - 4], 's'], ['mezzanino', [W.MZ.x + 8, W.MZ.y + 1.5, W.MZ.z + 10], [NC.x, Q + 24, NC.z], 's'],
-    (W.MOBIUS ? ['corridoio', [40, Q + 1.7, 0.3], [60, Q + 14, 0], 's'] : ['corridoio', [GX - 22, Q + 13, 30], [GX + 24, Q + 12, 22], 's']), ['vie', [SX + 31, Q + 1.7, W.SCALA.z], [SX - 30, PIANO, W.SCALA.z], 's'],
+    (W.MOBIUS ? ['corridoio', [40, Q + 1.7, 0.3], [60, Q + 14, 0], 's'] : ['corridoio', [GX - 22, Q + 13, 30], [GX + 24, Q + 12, 22], 's']), ['vie', [SX + 31, Q + 1.7, W.SCALA.z], [SX - 30, FOND, W.SCALA.z], 's'],
     ['sotto', [SX - 36, 1.8, 30], [60, 1, -10], 'b'], ['fondamenta', [20, FOND + 5, 46], [20, FOND + 1, 0], 'w'],
   ];
   const TOUR_KEYS = TOUR.map((t) => t[0]);
@@ -292,8 +266,8 @@ async function start() {
       anticamera: [P(N0.x - 4, Q, 0), neck(0.1)],
       corridoio: W.MOBIUS ? [P(48, Q, 0), P(55.5, Q, 0), ...[0.08, 0.18, 0.3, 0.42].map((th) => { const p = W.mobius(th, 0, V(0, 0, 0)); return P(p.x, p.y, p.z); })] : [P(N0.x - 4, Q, 0), P(N0.x + 4, Q, -6), ...[0.02, 0.1, 0.2, 0.3, 0.4, 0.5].map((t) => { const p = W.CORR.getPoint(t); return P(p.x, p.y, p.z); })],
       mezzanino: [P(N0.x - 4, Q, 0), neck(0.5), neck(0.95), P(NC.x - 4, Q, NC.z + 2), P(NC.x + 10.4, Q, NC.z + 5)],
-      sotto: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(SX - 30, PIANO + 0.5, W.SCALA.z), P(SX - 40, 0.6, 30, 'b'), P(-10, 0.6, 30, 'b')],
-      fondamenta: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(SX - 30, PIANO + 0.5, W.SCALA.z), P(SX - 40, 0.5, 30, 'b'), P(-10, FOND + 0.6, 40, 'w')],
+      sotto: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(SX - 30, FOND + 0.5, W.SCALA.z), P(SX - 40, 0.6, 30, 'b'), P(-10, 0.6, 30, 'b')],
+      fondamenta: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(SX - 30, FOND + 0.5, W.SCALA.z), P(SX - 40, 0.5, 30, 'b'), P(-10, FOND + 0.6, 40, 'w')],
       struttura: [P(SX + 30, Q, 0)],
     }[s];
     if (s === 'struttura') { strutturaT = 1; flyTo('struttura', 5); await say('voce-struttura', RACCORDI.voceStruttura); }
@@ -347,9 +321,7 @@ async function start() {
     for (let f = 0; f < 3; f++) if (tremula[f]) fessureT[f] = 0.45 + 0.45 * Math.sin(t * 7 + f);
     W.aggiorna(dt, t, ST);
     const L = ST.liv;
-    // le figure in attesa, quella già passata, la ruminazione
-    attesa[0].position.set(SX - 58, Q + L, 0.6); attesa[1].position.set(SX - 61, Q + L, -0.7);
-    passato.position.set(SX + 70 + 8 * Math.sin(t * 0.08), Q + L, -0.8);
+    if (MUTA) MUTA.update(dt, t);
     if (RUM.visible && W.MOBIUS) { // sul nastro: cammina senza fine; i piedi seguono la superficie, anche capovolta
       const th = (t * 1.3 / 13) % (Math.PI * 4); W.mobius(th, 0, tmpA, RN); W.mobius(th + 0.01, 0, tmpB); RF.subVectors(tmpB, tmpA).normalize(); RX.crossVectors(RN, RF);
       RMAT.makeBasis(RX, RN, RF); RUM.quaternion.setFromRotationMatrix(RMAT); RUM.position.set(tmpA.x, tmpA.y + L, tmpA.z);
@@ -386,7 +358,7 @@ async function start() {
       if (tour.p === tour.pt && tour.spoken !== i) { tour.spoken = i; const d = TOUR[i][4]; if (d !== undefined) say(`domanda-${d + 1}`, DOMANDE[d]); else say(`spazio-${TOUR_KEYS[i]}`, testoSpazio(TOUR_KEYS[i])); }
     } else controls.update();
     picker.update(); grana.uniforms.uT.value = (t * 7.3) % 100;
-    if (AC && soundOn && frame % 10 === 0) { const k = Math.min(1, Math.max(0, (ST.livello + 40) / 50)); filt.frequency.setTargetAtTime(350 + 7650 * k * k, AC.currentTime, 0.6); } // pavimento alto: pieno; lontano: ovattato
+    if (AC && soundOn) { filt.frequency.setTargetAtTime(260 + 22 * (ST.livello + 12), AC.currentTime, 0.4); lfoG.gain.setTargetAtTime(40 + 220 * ST.attivazione, AC.currentTime, 0.4); }
     composer.render();
     // etichette
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -410,5 +382,5 @@ async function start() {
   setTimeout(() => say('00-apertura', RACCORDI.apertura), 1200);
 
   if (/[?&]debug\b/.test(location.search)) window.__soglia = { renderer, scene, ST, select, smista, setMode, W, camera, controls };
-  window.addEventListener('pagehide', (e) => { if (e.persisted) return; cancelAnimationFrame(raf); zitto(); if (musica) musica.pause(); picker.dispose(); controls.dispose(); disposeObject(scene); composer.dispose(); renderer.dispose(); if (AC) AC.close(); });
+  window.addEventListener('pagehide', (e) => { if (e.persisted) return; cancelAnimationFrame(raf); zitto(); picker.dispose(); controls.dispose(); disposeObject(scene); composer.dispose(); renderer.dispose(); if (AC) AC.close(); });
 }
