@@ -176,15 +176,15 @@ async function start() {
   const testoSpazio = (k) => { const s = SPAZI[k]; return [s.nome + '.', ...s.testo, ...(s.formula ? [s.formula] : [])].join(' '); };
   $('voce').addEventListener('click', () => { voiceOn = !voiceOn; $('voce').setAttribute('aria-pressed', voiceOn); if (!voiceOn) { try { speechSynthesis.cancel(); } catch (e) {} if (audio) audio.pause(); } });
 
-  /* ---------- il tappeto sonoro: un bordone grave che segue il livello ---------- */
-  let AC = null, master, filt, lfoG, soundOn = false;
+  /* ---------- il tappeto sonoro: la musica scelta (suono/tappeto.mp3), in loop; un filtro la scurisce quando il pavimento scende ---------- */
+  let AC = null, master, filt, musica = null, soundOn = false;
   function initAudio() {
     AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.gain.value = 0; master.connect(AC.destination);
-    filt = AC.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 500; filt.connect(master);
-    const lfo = AC.createOscillator(); lfo.frequency.value = 0.08; lfoG = AC.createGain(); lfoG.gain.value = 120; lfo.connect(lfoG); lfoG.connect(filt.frequency); lfo.start();
-    [43.65, 65.4, 87.3, 130.8].forEach((f, i) => { const o = AC.createOscillator(); o.type = i < 2 ? 'sine' : 'triangle'; o.frequency.value = f; const g = AC.createGain(); g.gain.value = [0.28, 0.16, 0.08, 0.04][i]; o.connect(g); g.connect(filt); o.start(); });
+    filt = AC.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 6000; filt.Q.value = 0.7; filt.connect(master);
+    musica = new Audio('suono/tappeto.mp3'); musica.loop = true; musica.crossOrigin = 'anonymous';
+    AC.createMediaElementSource(musica).connect(filt);
   }
-  $('suono').addEventListener('click', () => { if (!AC) initAudio(); soundOn = !soundOn; $('suono').setAttribute('aria-pressed', soundOn); AC.resume(); master.gain.setTargetAtTime(soundOn ? 0.35 : 0, AC.currentTime, 0.8); });
+  $('suono').addEventListener('click', () => { if (!AC) initAudio(); soundOn = !soundOn; $('suono').setAttribute('aria-pressed', soundOn); AC.resume(); if (soundOn) musica.play().catch(() => {}); master.gain.setTargetAtTime(soundOn ? 0.6 : 0, AC.currentTime, 0.8); if (!soundOn) setTimeout(() => { if (!soundOn) musica.pause(); }, 3000); });
 
   /* ---------- scegliere uno spazio ---------- */
   let invitato = false;
@@ -386,7 +386,7 @@ async function start() {
       if (tour.p === tour.pt && tour.spoken !== i) { tour.spoken = i; const d = TOUR[i][4]; if (d !== undefined) say(`domanda-${d + 1}`, DOMANDE[d]); else say(`spazio-${TOUR_KEYS[i]}`, testoSpazio(TOUR_KEYS[i])); }
     } else controls.update();
     picker.update(); grana.uniforms.uT.value = (t * 7.3) % 100;
-    if (AC && soundOn) { filt.frequency.setTargetAtTime(260 + 22 * (ST.livello + 12), AC.currentTime, 0.4); lfoG.gain.setTargetAtTime(40 + 220 * ST.attivazione, AC.currentTime, 0.4); }
+    if (AC && soundOn && frame % 10 === 0) { const k = Math.min(1, Math.max(0, (ST.livello + 40) / 50)); filt.frequency.setTargetAtTime(350 + 7650 * k * k, AC.currentTime, 0.6); } // pavimento alto: pieno; lontano: ovattato
     composer.render();
     // etichette
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -410,5 +410,5 @@ async function start() {
   setTimeout(() => say('00-apertura', RACCORDI.apertura), 1200);
 
   if (/[?&]debug\b/.test(location.search)) window.__soglia = { renderer, scene, ST, select, smista, setMode, W, camera, controls };
-  window.addEventListener('pagehide', (e) => { if (e.persisted) return; cancelAnimationFrame(raf); zitto(); picker.dispose(); controls.dispose(); disposeObject(scene); composer.dispose(); renderer.dispose(); if (AC) AC.close(); });
+  window.addEventListener('pagehide', (e) => { if (e.persisted) return; cancelAnimationFrame(raf); zitto(); if (musica) musica.pause(); picker.dispose(); controls.dispose(); disposeObject(scene); composer.dispose(); renderer.dispose(); if (AC) AC.close(); });
 }

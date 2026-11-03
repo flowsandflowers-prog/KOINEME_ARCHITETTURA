@@ -13,6 +13,8 @@ Stato: prima versione navigabile del modello (`index.html`, `main.js`, `mondo.js
 | `../public/soglia/modelli/volpe.glb` | Proposta per il compagno: «Fox» dei glTF Sample Assets di Khronos, CC-BY 4.0: modello di PixelMannen, rig e animazioni di @tomkranis, conversione di @AsoboStudio e @scurest. |
 | `../public/soglia/modelli/cicogna.glb`, `pappagallo.glb` | Proposte per il compagno: «Stork» e «Parrot» dagli esempi di three.js (r171), animali animati di mirada.com per ro.me. |
 | `../public/soglia/modelli/animali/` | Varianti per il mutaforma: lupo, cane, cervo, cerva, cavallo, toro, alpaca dal pacchetto «Ultimate Animated Animals» di Quaternius (CC0, tramite il progetto danwahl/animasim), alleggeriti; il fenicottero dagli esempi di three.js (r171). |
+| `../public/soglia/modelli/animali/lepre.glb`, `lepre_*.webp` | La lepre: «Rabbit» di Čestmír Dammer (kelgar.org), CC0, fornita da te; convertita dal `.blend`, con le sue animazioni (corsa, salto, guardia, seduta). |
+| `../public/soglia/suono/tappeto.mp3` | Il tappeto sonoro: «cave_themeb4», fornito da te (convertito da `.ogg`). Autore e licenza da annotare. |
 | `studio/animali.html` | Gli animali disponibili per il mutaforma, uno per riquadro. |
 | `studio/daemon.html` | Le cinque proposte per sostituire il manichino: volpe, cicogna, mutaforma, sciame, filo. |
 | `studio/` | Gli studi visivi e le immagini in `studio/immagini/`. |
