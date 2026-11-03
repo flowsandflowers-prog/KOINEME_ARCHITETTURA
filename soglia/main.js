@@ -166,11 +166,15 @@ async function start() {
   $('suono').addEventListener('click', () => { if (!AC) initAudio(); soundOn = !soundOn; $('suono').setAttribute('aria-pressed', soundOn); AC.resume(); master.gain.setTargetAtTime(soundOn ? 0.35 : 0, AC.currentTime, 0.8); });
 
   /* ---------- scegliere uno spazio ---------- */
-  let invitato = false;
+  let invitato = false, segueK = null; const SEG = V(0, 0, 0);
   function select(k, { noFly = false, parla = true } = {}) {
     if (mode === 'attraversa') { const i = TOUR_KEYS.indexOf(k); if (i >= 0) { tourGo(i); return; } setMode('racconta'); }
     mark(k); strutturaT = k === 'struttura' ? 1 : 0; RUM.visible = k === 'corridoio'; allinea3T = 1;
-    if (!noFly) flyTo(k);
+    segueK = null;
+    if (ABIT && ABIT.VISTA[k] && !noFly) { // anteprima dei percorsi: la camera va sull'animale dello spazio e poi lo segue
+      ABIT.posizione(k, tmpA); const o = ABIT.VISTA[k];
+      fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: V(tmpA.x + o[0], tmpA.y + o[1], tmpA.z + o[2]), t1: tmpA.clone(), s: performance.now(), d: 2500 }; segueK = k;
+    } else if (!noFly) flyTo(k);
     if (parla) { zitto(); say(`spazio-${k}`, testoSpazio(k)).then(() => { if (k === 'sotto' && !invitato && current === 'sotto') { invitato = true; say('appoggi-invito', RACCORDI.appoggiInvito); } }); }
   }
   chipsEl.addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (b) select(b.dataset.k); });
@@ -354,7 +358,7 @@ async function start() {
       const kk = 1 - Math.exp(-dt * 0.8);
       tmpA.copy(VF.position).add(segui.dietro); camera.position.lerp(tmpA, kk);
       tmpB.copy(VF.position).add(segui.avanti); controls.target.lerp(tmpB, kk); camera.lookAt(controls.target);
-    } else if (fly) { const e = ease(Math.min(1, (now - fly.s) / fly.d)); camera.position.lerpVectors(fly.p0, fly.p1, e); controls.target.lerpVectors(fly.t0, fly.t1, e); if (e >= 1) fly = null; if (!tour) controls.update(); else camera.lookAt(controls.target); }
+    } else if (fly) { if (segueK && ABIT && ABIT.posizione(segueK, SEG)) { SEG.sub(fly.t1); fly.t1.add(SEG); fly.p1.add(SEG); } const e = ease(Math.min(1, (now - fly.s) / fly.d)); camera.position.lerpVectors(fly.p0, fly.p1, e); controls.target.lerpVectors(fly.t0, fly.t1, e); if (e >= 1) fly = null; if (!tour) controls.update(); else camera.lookAt(controls.target); }
     else if (tour) {
       if (tour.idle && now - tour.idle > 900) { tour.pt = Math.round(tour.pt * NST) / NST; tour.idle = 0; }
       tour.p += (tour.pt - tour.p) * (1 - Math.exp(-dt * 1.5)); if (Math.abs(tour.pt - tour.p) < 1e-4) tour.p = tour.pt;
@@ -362,7 +366,10 @@ async function start() {
       const i = Math.round(tour.p * NST);
       if (i !== tour.i) { tour.i = i; mark(TOUR_KEYS[i]); RUM.visible = TOUR_KEYS[i] === 'corridoio'; strutturaT = 0; zitto(); const d = TOUR[i][4]; if (d !== undefined) { domanda(DOMANDE[d], null); for (let f = 0; f < 3; f++) fessureT[f] = f === d ? 1 : 0; } else { domanda(null); fessureT.fill(0); } }
       if (tour.p === tour.pt && tour.spoken !== i) { tour.spoken = i; const d = TOUR[i][4]; if (d !== undefined) say(`domanda-${d + 1}`, DOMANDE[d]); else say(`spazio-${TOUR_KEYS[i]}`, testoSpazio(TOUR_KEYS[i])); }
-    } else controls.update();
+    } else {
+      if (segueK && ABIT && ABIT.posizione(segueK, SEG)) { SEG.sub(controls.target); controls.target.add(SEG); camera.position.add(SEG); } // segue l'animale, lasciando girare intorno
+      controls.update();
+    }
     picker.update(); grana.uniforms.uT.value = (t * 7.3) % 100;
     if (AC && soundOn) { filt.frequency.setTargetAtTime(260 + 22 * (ST.livello + 12), AC.currentTime, 0.4); lfoG.gain.setTargetAtTime(40 + 220 * ST.attivazione, AC.currentTime, 0.4); }
     composer.render();
