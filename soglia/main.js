@@ -170,7 +170,7 @@ async function start() {
   function select(k, { noFly = false, parla = true } = {}) {
     if (mode === 'attraversa') { const i = TOUR_KEYS.indexOf(k); if (i >= 0) { tourGo(i); return; } setMode('racconta'); }
     mark(k); strutturaT = k === 'struttura' ? 1 : 0; RUM.visible = k === 'corridoio'; allinea3T = 1;
-    segueK = null;
+    segueK = null; liberaDaemon();
     if (ABIT && ABIT.VISTA[k] && !noFly) { // anteprima dei percorsi: la camera va sull'animale dello spazio e poi lo segue
       ABIT.posizione(k, tmpA); const o = ABIT.VISTA[k];
       fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: V(tmpA.x + o[0], tmpA.y + o[1], tmpA.z + o[2]), t1: tmpA.clone(), s: performance.now(), d: 2500 }; segueK = k;
@@ -238,64 +238,76 @@ async function start() {
   const P = (x, y, z, f = 's') => ({ v: V(x, y, z), f });
   function cammina(punti, vel = 3.2) { return new Promise((res) => { cammino = { punti, i: 0, vel, res }; }); }
   function mostra(html, p) { qtag.innerHTML = html; qPos = p; qtag.classList.add('on'); }
+  /* ---------- lo Smistamento: storyboard della Soglia (circa 11 secondi), poi «dove va» ----------
+     1 la camera scende veloce dall'alto · 2 primo piano: il daemon muta · 3 da dietro: corre ed entra nella prima fessura,
+     si fa polvere · 4 controcampo dall'interno della prima fessura · 5 carrello all'indietro veloce: la polvere si ricompone
+     · 6 la camera gira e si mette dietro: seconda fessura · 7 dall'alto a tre quarti: muta di nuovo e avanza verso la terza
+     · 8 controcampo, primo piano: esce dalla terza nella forma della sua destinazione */
+  let ripresa = null, dest = null;
+  function gira(shots) { return new Promise((res) => { ripresa = { shots, i: -1, s: 0, res }; }); }
+  const FORMA_DI = { stanza: 'cervo', anticamera: 'cervo', corridoio: 'volpe', sotto: 'lepre', mezzanino: 'cicogna', fondamenta: 'polvere', struttura: 'polvere' };
+  const lerp = (a, b, u) => a + (b - a) * u, eo = (u) => 1 - Math.pow(1 - u, 3), ei = (u) => u * u;
+  const camA = V(0, 0, 0), camT = V(0, 0, 0);
+  function inquadra(px, py, pz, tx, ty, tz) { camera.position.set(px, py, pz); controls.target.set(tx, ty, tz); }
   async function smista(idx) {
     const id = ++runId; zitto(); if (mode !== 'racconta') setMode('racconta');
-    const v = VOCI[idx]; allineaT = 0; strutturaT = 0; RUM.visible = false; segui = null; drone = null; domanda(null); fessureT.fill(0); tremula.fill(false);
+    const v = VOCI[idx], M = MUTA; allineaT = 0; strutturaT = 0; segueK = null; drone = null; dest = null; ripresa = null; domanda(null); fessureT.fill(0); tremula.fill(false); allinea3T = 1;
     stepsEl.replaceChildren(); const li = [];
     DOMANDE.forEach((d, i) => { const e = document.createElement('li'); const b = document.createElement('b'); b.textContent = d + ' '; e.append(b, v.risposte[i]); stepsEl.appendChild(e); li.push(e); });
     { const e = document.createElement('li'); const b = document.createElement('b'); b.textContent = DOVE_VA + ' '; e.append(b, v.doveVa); stepsEl.appendChild(e); li.push(e); }
-    const X = W.SOGLIA_X, Lv = () => ST.liv, r = v.risposte;
-    mark('soglia'); VF.visible = false; VF.userData.set(false); tremula.fill(false); allinea3T = 1;
+    mark('soglia'); qtag.classList.remove('on');
+    if (!M) return;
+    const X = W.SOGLIA_X, r = v.risposte, s = v.spazio, y = Q, xS = X[0] - 12;
+    const giro = ['cervo', 'volpe', 'lepre'].sort(() => Math.random() - 0.5), D = FORMA_DI[s];
+    M.prendi(); M.metti(xS, y, 0, Math.PI / 2); M.anima('sta');
     say(`voce-${String(v.n).padStart(2, '0')}`, v.voce);
-    // una sola ripresa continua: la camera è la voce, attraversa le tre fessure a quota d'occhi
-    const y0 = Q + 1.75;
-    const cps = [V(X[0] - 16, y0 + 0.4, 0.6), V(X[0] - 5, y0, 0.1), V(X[0] + 2, y0, 0), V(X[1], y0, 0), V(X[2], y0, 0), V(X[2] + 7, y0 + 0.5, 0)];
-    const passa = (x) => (x - cps[0].x) / (cps[cps.length - 1].x - cps[0].x); // posizione lungo la ripresa, in proporzione
-    drone = { path: new THREE.CatmullRomCurve3(cps), s: performance.now(), d: (REDUCE ? 4 : 8) * 1000, liv: Lv(),
-      battute: [
-        { u: passa(X[0] - 6), f: () => { li[0].classList.add('on'); domanda(DOMANDE[0], null); } },
-        { u: passa(X[0] - 1), f: () => { domanda(DOMANDE[0], r[0]); fessureT[0] = 1; } },
-        { u: passa(X[1] - 7), f: () => { li[1].classList.add('on'); domanda(DOMANDE[1], null); } },
-        { u: passa(X[1] - 1), f: () => { domanda(DOMANDE[1], r[1]); lama(1, r[1]); } },
-        { u: passa(X[2] - 7), f: () => { li[2].classList.add('on'); domanda(DOMANDE[2], null); allinea3T = 0; } },
-        { u: passa(X[2] - 1.5), f: () => { domanda(DOMANDE[2], r[2]); allinea3T = /^sì/.test(r[2]) ? 1 : /^in parte/.test(r[2]) ? 0.5 : 0; lama(2, r[2]); } },
-      ], i: 0, fine: null };
-    await new Promise((res) => { drone.fine = res; }); if (id !== runId) return;
-    // controcampo: oltre la terza fessura, la figura esce a passo naturale e si accende
-    domanda(null);
-    VF.position.set(X[2] + 0.2, Q + Lv(), 0); VF.rotation.y = Math.PI / 2; VF.visible = true;
-    taglio(V(X[2] + 13, Q + Lv() + 1.9, 2.2), V(X[2], Q + Lv() + 2.2, 0), V(X[2] + 11, Q + Lv() + 1.8, 1.8), V(X[2] + 1, Q + Lv() + 2.0, 0), 4);
-    li[3].classList.add('on'); setTimeout(() => { if (id === runId) VF.userData.set(true); }, 900);
-    await cammina([P(X[2] + 4.5, Q, 0)], 1.45); if (id !== runId) return;
-    await pausa(600); if (id !== runId) return;
-    tremula.fill(false); fessureT.fill(0);
-    const N0 = W.NECK0, s = v.spazio, neck = (t) => { const p = W.NECK.getPointAt(t); return P(p.x, Q, p.z); };
-    const strada = {
-      stanza: [P(N0.x - 4, Q, 0), neck(0.15), neck(0.5), neck(0.95), P(NC.x - 6, Q, NC.z + 2)],
-      anticamera: [P(N0.x - 4, Q, 0), neck(0.1)],
-      corridoio: W.MOBIUS ? [P(48, Q, 0), P(55.5, Q, 0), ...[0.08, 0.18, 0.3, 0.42].map((th) => { const p = W.mobius(th, 0, V(0, 0, 0)); return P(p.x, p.y, p.z); })] : [P(N0.x - 4, Q, 0), P(N0.x + 4, Q, -6), ...[0.02, 0.1, 0.2, 0.3, 0.4, 0.5].map((t) => { const p = W.CORR.getPoint(t); return P(p.x, p.y, p.z); })],
-      mezzanino: [P(N0.x - 4, Q, 0), neck(0.5), neck(0.95), P(NC.x - 4, Q, NC.z + 2), P(NC.x + 10.4, Q, NC.z + 5)],
-      sotto: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(W.SCALA.xL, W.SCALA.ym + 0.5, W.SCALA.z), P(W.SCALA.xE + 3, W.SCALA.ym + 0.5, (W.SCALA.z + W.SCALA.z2) / 2), P(W.SCALA.xL, W.SCALA.ym + 0.5, W.SCALA.z2), P(W.SCALA.x1 + 1, FOND + 0.6, W.SCALA.z2), P(W.SCALA.x1 + 8, 0.6, 32, 'b')],
-      fondamenta: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(W.SCALA.xL, W.SCALA.ym + 0.5, W.SCALA.z), P(W.SCALA.xE + 3, W.SCALA.ym + 0.5, (W.SCALA.z + W.SCALA.z2) / 2), P(W.SCALA.xL, W.SCALA.ym + 0.5, W.SCALA.z2), P(W.SCALA.x1 + 1, FOND + 0.6, W.SCALA.z2), P(-10, FOND + 0.6, 40, 'w')],
-      struttura: [P(SX + 30, Q, 0)],
-    }[s];
-    if (s === 'struttura') { strutturaT = 1; flyTo('struttura', 5); await say('voce-struttura', RACCORDI.voceStruttura); }
-    else {
-      if (s === 'stanza') allineaT = 1; // le componenti si allineano: la porta si apre
-      // stacco: la figura è già vicina alla destinazione e fa gli ultimi passi
-      const ult = strada[strada.length - 1], pen = strada.length > 1 ? strada[strada.length - 2] : P(SX + 30, Q, 0);
-      tmpB.copy(pen.v); tmpB.y += off(pen.f); tmpC.copy(ult.v); tmpC.y += off(ult.f); // in coordinate del mondo
-      tmpA.subVectors(tmpC, tmpB); const d = tmpA.length(); const k0 = Math.max(0, 1 - 6 / Math.max(d, 0.01));
-      VF.position.copy(tmpB).addScaledVector(tmpA, k0);
-      const RC = RAC[s]; const o = off(RC[2]); taglio(V(RC[0][0], RC[0][1] + o, RC[0][2]), V(RC[1][0], RC[1][1] + o, RC[1][2]), V(RC[0][0] * 0.98 + RC[1][0] * 0.02, RC[0][1] + o, RC[0][2] * 0.98 + RC[1][2] * 0.02), V(RC[1][0], RC[1][1] + o, RC[1][2]), 4);
-      await cammina([ult], 1.45); if (id !== runId) return;
-      await say('voce-arriva', RACCORDI.voceArriva);
-    }
+    const P = M.pos, dx = (a, b, u) => M.metti(lerp(a, b, u), y, 0, Math.PI / 2);
+    await gira([
+      { d: 1.2, f: (u) => { const e = eo(u); inquadra(lerp(xS - 8, xS - 7, e), lerp(y + 110, y + 4, e), lerp(24, 8, e), xS, y + 1.5, 0); } },
+      { d: 1.2, on: () => M.muta(giro[0], 0.9), f: (u) => inquadra(lerp(xS + 5, xS + 4, u), y + 2.3, lerp(4.5, 3.6, u), xS, y + 1.6, 0) },
+      { d: 1.5, on: () => { M.anima('corre'); li[0].classList.add('on'); domanda(DOMANDE[0], null); },
+        f: (u) => { dx(xS, X[0] - 5, ei(u)); if (u > 0.5 && M.forma !== 'polvere' && !M._p) { M._p = 1; M.schiaccia(0.35); M.muta('polvere', 0.5); } if (u > 0.8) { domanda(DOMANDE[0], r[0]); fessureT[0] = 1; } inquadra(P.x - 9, y + 3.2, 1.2, P.x + 4, y + 1.6, 0); } },
+      { d: 1.0, f: (u) => { dx(X[0] - 5, X[0] + 5, u); M.schiaccia(Math.abs(P.x - X[0]) < 1.6 ? 0.35 : 1); inquadra(X[0] + 1.2, y + 1.8, 0, X[0] - 10, y + 1.4, 0); } },
+      { d: 1.2, on: () => { M._p = 0; M.schiaccia(1); M.muta(giro[1], 0.8); }, f: (u) => { const e = eo(u); inquadra(lerp(X[0] + 9, X[0] + 18, e), lerp(y + 2, y + 3.2, e), lerp(1.5, 3.5, e), P.x, y + 1.5, 0); } },
+      { d: 1.5, on: () => { M.anima('corre'); li[1].classList.add('on'); domanda(DOMANDE[1], null); },
+        f: (u) => { dx(X[0] + 5, X[1] - 1.5, ei(u)); if (u > 0.55 && !M._p) { M._p = 1; M.schiaccia(0.35); M.muta('polvere', 0.45); } if (u > 0.8) { domanda(DOMANDE[1], r[1]); lama(1, r[1]); }
+          const a = Math.min(1, u / 0.6) * Math.PI; inquadra(P.x + 8 * Math.cos(a), y + 2.6, 6 * Math.sin(a) + 0.8, P.x, y + 1.5, 0); } },
+      { d: 1.5, on: () => { li[2].classList.add('on'); domanda(DOMANDE[2], null); allinea3T = 0; },
+        f: (u) => { if (u < 0.3) { dx(X[1] - 1.5, X[1] + 3, u / 0.3); M.schiaccia(Math.abs(P.x - X[1]) < 1.6 ? 0.35 : 1); }
+          else { if (M._p) { M._p = 0; M.schiaccia(1); M.muta(giro[2], 0.6).then(() => M.anima('corre')); } dx(X[1] + 3, X[2] - 1.5, ei((u - 0.3) / 0.7)); }
+          inquadra(lerp(X[1] - 6, X[1] - 2, u), y + 40, lerp(28, 25, u), X[1] + 10, y + 1, 0); } },
+      { d: 1.6, on: () => { M.schiaccia(0.35); M.muta('polvere', 0.35); },
+        f: (u) => { dx(X[2] - 1.5, X[2] + 2.5, Math.min(1, u / 0.5)); if (u > 0.4 && !M._r) { M._r = 1; domanda(DOMANDE[2], r[2]); allinea3T = /^sì/.test(r[2]) ? 1 : /^in parte/.test(r[2]) ? 0.5 : 0; lama(2, r[2]); }
+          if (u > 0.5 && !M._d) { M._d = 1; M.schiaccia(1); if (D !== 'polvere') M.muta(D, 0.8).then(() => M.anima('sta')); }
+          inquadra(lerp(X[2] + 13, X[2] + 11, u), y + 2.2, 0.4, X[2] + 1, y + 1.6, 0); } },
+    ]);
+    M._r = M._d = M._p = 0;
     if (id !== runId) return;
-    mark(s); mostra(`${DOVE_VA}<i></i>`, null); qtag.querySelector('i').textContent = v.doveVa; // segue la figura
+    domanda(null); li[3].classList.add('on');
+    // «dove va»: stacco sulla destinazione; il daemon fa ciò che fa il suo stato, la camera lo segue
+    const OFF = { stanza: [-4, 4, 5], anticamera: [-13, 4, 7], corridoio: [6, 5, 26], sotto: [9, 4, 13], mezzanino: [-16, 7, 16], fondamenta: [-22, 14, 38] }[s];
+    const tA = V(0, 0, 0), tB = V(0, 0, 0), RN = V(0, 0, 0), RF = V(0, 0, 0), RX = V(0, 0, 0), MM = new THREE.Matrix4();
+    const T0 = performance.now() / 1000, el = () => performance.now() / 1000 - T0;
+    if (s === 'stanza') { allineaT = 1; M.anima('va'); dest = () => { const a = el() * 1.6 / 9; M.metti(NC.x + Math.cos(a) * 9, Q, NC.z + Math.sin(a) * 9, Math.atan2(-Math.sin(a), Math.cos(a))); }; }
+    else if (s === 'anticamera') { const p = W.NECK.getPointAt(0.12), q = W.NECK.getPointAt(0.3); M.metti(p.x, Q, p.z, Math.atan2(q.x - p.x, q.z - p.z)); M.anima('Idle_Headlow'); dest = () => {}; }
+    else if (s === 'corridoio') { M.anima('va'); dest = () => { const th = (el() * 1.5 / 13) % (Math.PI * 4); W.mobius(th, 0, tA, RN); W.mobius(th + 0.01, 0, tB); RF.subVectors(tB, tA).normalize(); RX.crossVectors(RN, RF); MM.makeBasis(RX, RN, RF); M.metti(tA.x, tA.y, tA.z); if (M.oggetto) M.oggetto.quaternion.setFromRotationMatrix(MM); }; }
+    else if (s === 'sotto') { M.anima('Guarding'); dest = () => M.metti(68, ST.sotto, 36, 0.6); }
+    else if (s === 'mezzanino') { // la cicogna vola dalla Soglia alla punta della canna e ci si posa
+      const tip = V(W.MZ.x, W.MZ.y + 8, W.MZ.z), via = new THREE.CatmullRomCurve3([V(X[2] + 2.5, Q, 0), V(30, Q + 22, 6), V(90, Q + 52, 14), V(tip.x - 14, tip.y + 10, tip.z - 6), tip.clone()]);
+      dest = () => { const u = Math.min(1, el() / 7); via.getPointAt(u, tA); via.getTangentAt(Math.min(0.999, u), tB); M.metti(tA.x, tA.y, tA.z, Math.atan2(tB.x, tB.z)); if (u >= 1) M.ferma(0); }; }
+    else if (s === 'fondamenta') { // la polvere scende la scala fino al fondo e si posa fra i sassi
+      const S2 = W.SCALA, h = 0.6, via = new THREE.CatmullRomCurve3([V(X[2] + 2.5, Q, 0), V(S2.x0, Q + h, S2.z), V(S2.xL, S2.ym + h, S2.z), V(S2.xE + 3, S2.ym + h, (S2.z + S2.z2) / 2), V(S2.xL, S2.ym + h, S2.z2), V(S2.x1, FOND + h, S2.z2), V(S2.x1 + 14, FOND + 0.4, 36)], false, 'centripetal');
+      dest = () => { const u = Math.min(1, el() / 6); via.getPointAt(eo(u) * 0.3 + u * 0.7, tA); M.metti(tA.x, tA.y, tA.z); }; }
+    else if (s === 'struttura') { strutturaT = 1; M.metti(X[2] + 2.5, Q, 0); dest = null; flyTo('struttura', 4); }
+    if (dest) { dest(); if (M.oggetto || M.forma === 'polvere') { camA.copy(M.pos); inquadra(camA.x + OFF[0], camA.y + OFF[1], camA.z + OFF[2], camA.x, camA.y + 1.2, camA.z); } destOff = OFF; }
+    await (s === 'struttura' ? say('voce-struttura', RACCORDI.voceStruttura) : say('voce-arriva', RACCORDI.voceArriva));
+    if (id !== runId) return;
+    mark(s); mostra(`${DOVE_VA}<i></i>`, null); qtag.querySelector('i').textContent = v.doveVa;
     await say(`dove-${s}`, v.doveVa);
-    setTimeout(() => { if (id === runId) qtag.classList.remove('on'); }, 4000);
+    setTimeout(() => { if (id !== runId) return; qtag.classList.remove('on'); }, 4000);
   }
+  let destOff = null;
+  function liberaDaemon() { if (dest || ripresa) { dest = null; ripresa = null; domanda(null); if (MUTA) MUTA.lascia(); } }
   $('voceGo').addEventListener('click', () => smista(parseInt(sel.value, 10)));
 
   /* ---------- post e dimensioni ---------- */
@@ -348,7 +360,14 @@ async function start() {
 
     }
     // camera
-    if (drone) {
+    if (ripresa) { // lo storyboard: un'inquadratura dopo l'altra
+      const r = ripresa;
+      if (r.i < 0 || now - r.s >= r.shots[r.i].d * 1000) { r.i++; r.s = now; if (r.i >= r.shots.length) { ripresa = null; r.res(); } else if (r.shots[r.i].on) r.shots[r.i].on(); }
+      if (ripresa) { const sh = r.shots[r.i]; sh.f(Math.min(1, (now - r.s) / (sh.d * 1000)), dt); camera.lookAt(controls.target); }
+    } else if (dest && destOff && MUTA) { // «dove va»: la camera segue il daemon, morbida
+      dest(); camA.set(MUTA.pos.x + destOff[0], MUTA.pos.y + destOff[1], MUTA.pos.z + destOff[2]); camT.set(MUTA.pos.x, MUTA.pos.y + 1.2, MUTA.pos.z);
+      const kk = 1 - Math.exp(-dt * 2.5); camera.position.lerp(camA, kk); controls.target.lerp(camT, kk); camera.lookAt(controls.target);
+    } else if (drone) {
       const u = Math.min(1, (now - drone.s) / drone.d), e = u * u * (3 - 2 * u); // parte e arriva morbida
       drone.path.getPoint(e, camera.position); camera.position.y += ST.liv - drone.liv;
       drone.path.getPoint(Math.min(1, e + 0.06), controls.target); controls.target.y += ST.liv - drone.liv + 0.3; camera.lookAt(controls.target);
