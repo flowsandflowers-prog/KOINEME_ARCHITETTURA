@@ -328,13 +328,15 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   const cold = new THREE.Color(0x3e5664), warmW = new THREE.Color(0x6b5a44), tmpC = new THREE.Color();
   let ripT = 0, porte = 0, liv = 0, fframe = 0, ondaT = 0; const ondaFredda = new THREE.Color(0x7fc4ff), ondaCalda = new THREE.Color(0xffd9a0);
   function aggiorna(dt, t, st) {
-    // il livello: la quota lo fissa, ogni appoggio tolto lo fa scendere; una vasca grande cambia meno e più lenta
     let tolti = 0; for (let i = 0; i < 4; i++) { const a = alberi[i]; const target = st.appoggi[i] ? 1 : 0; a.presente += (target - a.presente) * Math.min(1, dt * 1.2); if (!st.appoggi[i]) tolti++; }
-    const base = -10 + 20 * st.quota, calo = tolti * 7 * (1.35 - 0.7 * st.ampiezza);
+    // la quota e gli appoggi decidono dove arriva il pavimento; l'ampiezza decide solo quanto in fretta ci arriva
+    // (una vasca grande cambia più lenta). Quota a zero e nessun appoggio: il pavimento tocca il fondo, a secco
+    const base = -10 + 20 * st.quota, calo = tolti * 10;
     const k = Math.min(1, dt * (1.6 - 1.1 * st.ampiezza));
     liv += (base - calo - liv) * k;
     // sopra resta fermo; il pavimento (e l'acqua, i tronchi) segue il livello, senza scendere sotto le fondamenta
-    const yS = Math.max(FOND + 0.05, PIANO + liv); // a zero il pavimento posa sui sassi: il serbatoio è a secco st.liv = 0; st.sotto = yS; st.livello = liv;
+    // a zero il pavimento scende fino al fondo: il serbatoio è a secco
+    const yS = Math.max(FOND + 0.05, PIANO + liv); st.liv = 0; st.sotto = yS; st.livello = liv;
     SOPRA.position.y = 0; SOTTO.position.y = yS;
     { const sc = 0.75 + 0.5 * st.ampiezza, hx = BX * sc, hz = BZ * sc, zf = Math.min(TAGLIO, hz), h = Math.max(0.01, yS + WY - FOND), y = yS + WY;
       surf.scale.set(2 * hx, 2 * hz, 1);
