@@ -21,18 +21,23 @@ async function vesteLepre(root) {
   root.traverse((o) => { if (o.isMesh) o.material = o.name === 'Rabbit' ? new THREE.MeshStandardMaterial({ map: col, normalMap: nor, roughness: 0.9 }) : new THREE.MeshStandardMaterial({ map: pelo, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 1 }); });
 }
 
+// carica un animale per nome, alla misura voluta (la dimensione maggiore, in metri), dentro un gruppo da posizionare
+const loader = new GLTFLoader();
+export async function caricaAnimale(nome, misura, parent) {
+  const d = FORME.find((x) => x.nome === nome);
+  const gl = await loader.loadAsync(DIR + d.file), root = gl.scene;
+  if (d.texture) await vesteLepre(root);
+  const box = new THREE.Box3().setFromObject(root), sz = box.getSize(V(0, 0, 0)), s = (misura || d.misura) / Math.max(sz.x, sz.y, sz.z);
+  root.scale.setScalar(s); root.position.set(-(box.min.x + box.max.x) / 2 * s, -box.min.y * s, -(box.min.z + box.max.z) / 2 * s);
+  const meshes = []; root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; meshes.push(o); } });
+  const g = new THREE.Group(); g.add(root); parent.add(g);
+  const mixer = new THREE.AnimationMixer(root), act = {}; for (const c of gl.animations) act[c.name] = mixer.clipAction(c);
+  return { ...d, g, meshes, mixer, act, corrente: null,
+    suona(n) { const x = act[n] || Object.values(act)[0]; if (!x || this.corrente === x) return; x.reset().play(); if (this.corrente) x.crossFadeFrom(this.corrente, 0.4, false); this.corrente = x; } };
+}
+
 export async function creaMutaforma(scene, area) {
-  const loader = new GLTFLoader();
-  const forme = await Promise.all(FORME.map(async (d) => {
-    const gl = await loader.loadAsync(DIR + d.file), root = gl.scene;
-    if (d.texture) await vesteLepre(root);
-    const box = new THREE.Box3().setFromObject(root), sz = box.getSize(V(0, 0, 0)), s = d.misura / Math.max(sz.x, sz.y, sz.z);
-    root.scale.setScalar(s); root.position.set(-(box.min.x + box.max.x) / 2 * s, -box.min.y * s, -(box.min.z + box.max.z) / 2 * s);
-    const meshes = []; root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; meshes.push(o); } });
-    const g = new THREE.Group(); g.add(root); g.visible = false; scene.add(g);
-    const mixer = new THREE.AnimationMixer(root), act = {}; for (const c of gl.animations) act[c.name] = mixer.clipAction(c);
-    return { ...d, g, meshes, mixer, act, corrente: null };
-  }));
+  const forme = await Promise.all(FORME.map(async (d) => { const f = await caricaAnimale(d.nome, d.misura, scene); f.g.visible = false; return f; }));
 
   // la polvere della trasformazione
   const N = 1100;

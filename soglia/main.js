@@ -16,6 +16,7 @@ import { disposeObject } from '../src/lib/dispose.js';
 import { SPAZI, ORDINE, ETICHETTE, DOMANDE, DOVE_VA, VOCI, STANZE_CHIUSE, INTERFACCIA, RACCORDI, MEZZANINO_SPIEGAZIONE } from './testi.js';
 import { costruisci, Q, FOND, SX, GX, NC } from './mondo.js';
 import { creaMutaforma } from './mutaforma.js';
+import { creaAbitanti } from './abitanti.js';
 
 const $ = (id) => document.getElementById(id);
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -116,6 +117,8 @@ async function start() {
   const MUTA = await creaMutaforma(scene, { x0: SX - 33, x1: W.SOGLIA_X[0] - 4, z0: -17, z1: 10, y: Q,
     // il giro della cicogna: un anello chiuso che parte e torna davanti alla Soglia, alto sopra la Soglia e intorno al nido
     volo: [...Array(40)].map((_, i) => { const th = Math.PI + (i / 40) * Math.PI * 2, c = (1 + Math.cos(th)) / 2; return V(68 + 116 * Math.cos(th), Q + 5 + 52 * Math.pow(c, 0.6), 46 * Math.sin(th)); }) }).catch((e) => { console.warn(e); return null; });
+  // l'anteprima dei percorsi (?percorsi): un animale in ogni spazio di destinazione
+  const ABIT = /[?&]percorsi\b/.test(location.search) ? await creaAbitanti(scene, W, { Q, NC, FOND }).catch((e) => { console.warn(e); return null; }) : null;
 
   /* ---------- le inquadrature del racconto ---------- */
   // f: 's' = sale e scende con il livello; 'w' = fissa
@@ -324,6 +327,7 @@ async function start() {
     W.aggiorna(dt, t, ST);
     const L = ST.liv;
     if (MUTA) MUTA.update(dt, t);
+    if (ABIT) ABIT.update(dt, t);
     if (RUM.visible && W.MOBIUS) { // sul nastro: cammina senza fine; i piedi seguono la superficie, anche capovolta
       const th = (t * 1.3 / 13) % (Math.PI * 4); W.mobius(th, 0, tmpA, RN); W.mobius(th + 0.01, 0, tmpB); RF.subVectors(tmpB, tmpA).normalize(); RX.crossVectors(RN, RF);
       RMAT.makeBasis(RX, RN, RF); RUM.quaternion.setFromRotationMatrix(RMAT); RUM.position.set(tmpA.x, tmpA.y + L, tmpA.z);

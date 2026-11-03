@@ -16,6 +16,7 @@ Stato: prima versione navigabile del modello (`index.html`, `main.js`, `mondo.js
 | `studio/animali.html` | Gli animali disponibili per il mutaforma, uno per riquadro. |
 | `studio/daemon.html` | Le cinque proposte per sostituire il manichino: volpe, cicogna, mutaforma, sciame, filo. |
 | `mutaforma.js` | Il mutaforma: davanti al primo passaggio vaga sulla piattaforma e, a caso, si scioglie in polvere e si ricompone in un altro animale (cervo, volpe, lepre, cicogna). |
+| `abitanti.js` | Anteprima dei percorsi (si apre con `?percorsi`): un animale in ogni spazio di destinazione, per decidere l'abbinamento. |
 | `studio/` | Gli studi visivi e le immagini in `studio/immagini/`. |
 
 Comandi:
