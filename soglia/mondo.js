@@ -102,7 +102,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   SOPRA.attach(aria);
 
   /* ---------- i quattro appoggi: tronchi rossi; sopra, una pellicola blu che poggia sulle loro cime ---------- */
-  const ALBERI = [[-40, -30], [-40, 30], [150, -30], [150, 30]]; // ai quattro angoli, simmetrici rispetto al passaggio
+  const ALBERI = [[-70, -30], [-62, 30], [30, -30], [39, 30]]; // a sinistra del parallelepipedo e fra lui e il corridoio, sfalsati: di fianco si vedono tutti e quattro
   const alberi = ALBERI.map(([x, z]) => {
     const g = new THREE.Group(); g.position.set(x, 0, z); SOTTO.add(g);
     const trunk = shade(add(new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.4, 1, 20), M.bark.clone()), g, 0, 0.5, 0));
@@ -148,7 +148,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   box(NECK0.x - (SX + 36), 1.0, 3.0, M.basalt, SOPRA, (SX + 36 + NECK0.x) / 2, Q - 0.5, 0);
   // l'unica scala: dritta, un pieno svuotato. La fascia davanti al parallelepipedo è tolta sopra la linea dei gradini:
   // resta il pieno sotto, gradinato. Alzate rosse come i tronchi, pedate blu come il piano di sotto
-  const SCALA = { x0: SX + 30, x1: SX - 30, y1: FOND + 0.4, n: 150, z: (ZS + ZF) / 2 };
+  const SCALA = { x0: SX + 30, x1: SX - 30, y1: 0.4, n: 100, z: (ZS + ZF) / 2 };
   { const { x0, x1, y1, n } = SCALA, run = (x0 - x1) / n, rise = (Q - y1) / n;
     const sh = new THREE.Shape(); sh.moveTo(SX - 35, YB); sh.lineTo(SX + 35, YB); sh.lineTo(SX + 35, Q); sh.lineTo(x0, Q);
     for (let i = 0; i < n; i++) { const y = Q - (i + 1) * rise, x = x0 - i * run; sh.lineTo(x, y); sh.lineTo(x - run, y); }
@@ -253,27 +253,27 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
     shade(add(new THREE.Mesh(g, M.corr), SOPRA));
     CORR = new THREE.CatmullRomCurve3([...Array(49)].map((_, i) => mobius((i / 48) * Math.PI * 2, 0, V(0, 0, 0))), true);
   }
-  box(12, 0.8, 2.6, M.basalt, SOPRA, NECK0.x - 4, Q - 0.4, -9);
-  // il mezzanino: una canna esile che sale dalle fondamenta, attraversa il nido, esce oltre la sommità e si piega
-  // all'ingiù come una canna da pesca. Dalla punta pende una fune: ci si appende. La brezza la fa ondeggiare
-  const ROD = { x: NC.x + 12, z: NC.z + 6, y: Q + 44 };
-  const dirO = V(0.6, 0, 0.8);
+  if (corridoio === 'anello') box(12, 0.8, 2.6, M.basalt, SOPRA, NECK0.x - 4, Q - 0.4, -9); // il raccordo alla galleria ad anello
+  // il mezzanino: una canna esile, una sola curva. Sale inclinata dalle fondamenta, attraversa il nido, esce oltre
+  // la sommità e si piega all'ingiù come una canna da pesca sotto un peso. Dalla punta pende una fune: ci si appende.
+  // La brezza (che cresce e cala, più forte con l'attivazione) fa ondeggiare la parte fuori dal nido, la punta di più
+  const dirO = V(0.6, 0, 0.8), R0 = V(NC.x + 15, 0, NC.z + 7);
+  const RC = new THREE.CatmullRomCurve3([[-16, FOND], [-11, Q - 5], [-6, Q + 20], [-1, Q + 42], [4, Q + 56], [11, Q + 63], [18, Q + 61], [24, Q + 53], [27, Q + 43]]
+    .map(([sx, y]) => V(R0.x + dirO.x * sx, y, R0.z + dirO.z * sx)), false, 'centripetal');
   const rodM = new THREE.MeshStandardMaterial({ color: 0xc4b9a6, roughness: 0.6 });
-  const rodLow = shade(add(new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.42, 1, 12).translate(0, -0.5, 0), rodM), SOPRA, ROD.x, ROD.y, ROD.z));
-  // due snodi: alla sommità del nido e a metà dell'arco; la punta si piega di più
-  const piv1 = add(new THREE.Group(), SOPRA, ROD.x, ROD.y, ROD.z);
-  const P1 = [V(0, 0, 0), V(0, 10, 0), V(0, 18, 0), V(dirO.x * 4, 23, dirO.z * 4), V(dirO.x * 10, 25.5, dirO.z * 10)];
-  const M1 = P1[P1.length - 1];
-  const tubo = (pts, r) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, r, 8, false);
-  shade(add(new THREE.Mesh(tubo(P1, 0.3), rodM), piv1));
-  const piv2 = add(new THREE.Group(), piv1, M1.x, M1.y, M1.z);
-  const P2 = [V(0, 0, 0), V(dirO.x * 7, 0.6, dirO.z * 7), V(dirO.x * 14, -2.5, dirO.z * 14), V(dirO.x * 19, -9, dirO.z * 19), V(dirO.x * 21, -17, dirO.z * 21)];
-  shade(add(new THREE.Mesh(tubo(P2, 0.18), rodM), piv2));
-  const TIP = P2[P2.length - 1], ROPE = 8;
-  const corda = add(new THREE.Group(), piv2, TIP.x, TIP.y, TIP.z);
+  const TA = 0.4, TB = 0.74; // gli snodi: all'uscita dal nido e a metà dell'arco
+  const tratto = (t0, t1, o, r) => { const pts = []; for (let i = 0; i <= 24; i++) pts.push(RC.getPoint(t0 + (t1 - t0) * (i / 24)).sub(o)); return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, r, 8, false); };
+  const PA = RC.getPoint(TA), PB = RC.getPoint(TB), TIPW = RC.getPoint(1);
+  shade(add(new THREE.Mesh(tratto(0, TA, V(0, 0, 0), 0.42), rodM), SOPRA));
+  const piv1 = add(new THREE.Group(), SOPRA, PA.x, PA.y, PA.z);
+  shade(add(new THREE.Mesh(tratto(TA, TB, PA, 0.3), rodM), piv1));
+  const piv2 = add(new THREE.Group(), piv1, PB.x - PA.x, PB.y - PA.y, PB.z - PA.z);
+  shade(add(new THREE.Mesh(tratto(TB, 1, PB, 0.17), rodM), piv2));
+  const ROPE = 8;
+  const corda = add(new THREE.Group(), piv2, TIPW.x - PB.x, TIPW.y - PB.y, TIPW.z - PB.z);
   add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, ROPE, 6).translate(0, -ROPE / 2, 0), new THREE.MeshStandardMaterial({ color: 0x2a2520, roughness: 0.9 })), corda);
   add(new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.07, 8, 24), new THREE.MeshStandardMaterial({ color: 0x2a2520, roughness: 0.9 })), corda, 0, -ROPE - 0.4, 0);
-  const MZ = V(ROD.x + M1.x + TIP.x, ROD.y + M1.y + TIP.y - ROPE, ROD.z + M1.z + TIP.z);
+  const MZ = V(TIPW.x, TIPW.y - ROPE, TIPW.z);
   const axO = V(0, 0, 0).crossVectors(V0Y, dirO).normalize(); // asse di flessione: perpendicolare alla direzione della punta
   const qa = new THREE.Quaternion(), qb = new THREE.Quaternion(), qw = new THREE.Quaternion(), axL = V(0, 0, 0);
   let pend = 0, pendV = 0;
@@ -298,7 +298,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   proxy(new THREE.BoxGeometry(2 * BX, 2, 2 * BZ), SOTTO, BC.x, 0, BC.z, 'sotto');
   proxy(new THREE.BoxGeometry(600, 10, 300), scene, 0, FOND - 2, -100, 'fondamenta');
   for (const k of [0, 16, 32, 48]) { const p = CORR.getPoint(0.15 + k / 64 * 0.7); proxy(new THREE.SphereGeometry(4, 8, 6), SOPRA, p.x, p.y, p.z, 'corridoio'); }
-  for (const y of [0.3, 0.6]) proxy(new THREE.CylinderGeometry(2.2, 2.2, 8, 8), SOPRA, ROD.x, Q + 30 + y * 20, ROD.z, 'mezzanino');
+  for (const t of [0.5, 0.65, 0.8, 0.92]) { const p = RC.getPoint(t); proxy(new THREE.SphereGeometry(3, 8, 6), SOPRA, p.x, p.y, p.z, 'mezzanino'); }
 
   const ANCORE = {
     soglia: [SOPRA, V(SX, Q + 33, 0)], stanza: [SOPRA, V(NC.x, NC.y + 34, NC.z)], anticamera: [SOPRA, V(GX - 40, Q + 9, 0)],
@@ -320,7 +320,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
     const k = Math.min(1, dt * (1.6 - 1.1 * st.ampiezza));
     liv += (base - calo - liv) * k;
     // sopra resta fermo; il pavimento (e l'acqua, i tronchi) segue il livello, senza scendere sotto le fondamenta
-    const yS = Math.max(FOND + 3, PIANO + liv); // a zero il pavimento posa sui sassi: il serbatoio è a secco st.liv = 0; st.sotto = yS; st.livello = liv;
+    const yS = Math.max(FOND + 0.05, PIANO + liv); // a zero il pavimento posa sui sassi: il serbatoio è a secco st.liv = 0; st.sotto = yS; st.livello = liv;
     SOPRA.position.y = 0; SOTTO.position.y = yS;
     { const sc = 0.75 + 0.5 * st.ampiezza, hx = BX * sc, hz = BZ * sc, zf = Math.min(TAGLIO, hz), h = Math.max(0.01, yS + WY - FOND), y = yS + WY;
       surf.scale.set(2 * hx, 2 * hz, 1);
@@ -334,7 +334,6 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
     const span = Math.max(0.5, yS - FOND);
     for (let i = 0; i < 4; i++) { const a = alberi[i]; a.trunk.scale.set(1, span * (0.25 + 0.75 * a.presente), 1); a.trunk.position.y = -0.05 - span * 0.75 * (1 - a.presente); }
     // la canna del mezzanino: dalle fondamenta (ferme) fino al nido (che sale e scende); la brezza cresce e cala
-    rodLow.scale.y = ROD.y - FOND;
     const brezza = (0.25 + 0.75 * st.attivazione) * (0.55 + 0.45 * Math.sin(t * 0.13)) * (1 + 0.25 * Math.sin(t * 1.7));
     const f = Math.sin(t * 0.85) + 0.35 * Math.sin(t * 2.1 + 1);
     piv1.rotation.set(0, 0, 0); piv1.quaternion.setFromAxisAngle(axO, 0.035 * brezza * f);

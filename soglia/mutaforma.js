@@ -8,10 +8,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const DIR = 'modelli/';
 const FORME = [
-  { nome: 'cervo', file: 'animali/cervo.glb', misura: 2.3, va: 'Walk', sta: ['Idle', 'Eating', 'Idle_Headlow'], vel: 1.2 },
-  { nome: 'volpe', file: 'volpe.glb', misura: 1.3, va: 'Walk', sta: ['Survey'], vel: 1.0 },
-  { nome: 'lepre', file: 'animali/lepre.glb', misura: 0.75, va: 'Running', sta: ['Guarding', 'Sitting.000'], vel: 2.0, texture: true },
-  { nome: 'cicogna', file: 'cicogna.glb', misura: 2.0, vola: true, vel: 2.2 },
+  { nome: 'cervo', file: 'animali/cervo.glb', misura: 5.0, va: 'Walk', sta: ['Idle', 'Eating', 'Idle_Headlow'], vel: 1.8 },
+  { nome: 'volpe', file: 'volpe.glb', misura: 3.0, va: 'Walk', sta: ['Survey'], vel: 1.6 },
+  { nome: 'lepre', file: 'animali/lepre.glb', misura: 2.0, va: 'Running', sta: ['Guarding', 'Sitting.000'], vel: 3.0, texture: true },
+  { nome: 'cicogna', file: 'cicogna.glb', misura: 4.6, vola: true, vel: 2.2 },
 ];
 
 async function vesteLepre(root) {
@@ -37,7 +37,7 @@ export async function creaMutaforma(scene, area) {
   const N = 1100;
   const dot = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
   const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(N * 3), 3));
-  const polvere = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xf6ead2, size: 0.07, map: dot, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const polvere = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xf6ead2, size: 0.13, map: dot, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   polvere.frustumCulled = false; polvere.visible = false; scene.add(polvere);
   const A = new Float32Array(N * 3), B = new Float32Array(N * 3), J = new Float32Array(N * 3);
   for (let i = 0; i < N * 3; i++) J[i] = Math.random() - 0.5;
@@ -58,7 +58,7 @@ export async function creaMutaforma(scene, area) {
     else { stato = 'sta'; timer = rnd(1, 2.5); suona(fm, fm.sta[0]); }
   }
   function colloca(fm) {
-    if (fm.vola) fm.g.position.set(pos.x, area.y + 2.6, pos.z); else fm.g.position.set(pos.x, area.y, pos.z);
+    if (fm.vola) fm.g.position.set(pos.x, area.y + 4.5, pos.z); else fm.g.position.set(pos.x, area.y, pos.z);
     fm.g.rotation.y = yaw;
   }
   avvia(f); colloca(f); mostra(f);
@@ -77,7 +77,7 @@ export async function creaMutaforma(scene, area) {
       prossimo -= dt;
       if (f.vola) { // cerchi bassi sopra la piattaforma
         giro += dt * f.vel / 4.5; const r = 4.5; pos.set(C.x + Math.cos(giro) * r * 0.7, area.y, C.z + Math.sin(giro) * r * 1.6);
-        yaw = Math.atan2(-Math.sin(giro) * 0.7, Math.cos(giro) * 1.6); f.g.position.set(pos.x, area.y + 2.6 + 0.4 * Math.sin(t * 0.9), pos.z); f.g.rotation.y = yaw;
+        yaw = Math.atan2(-Math.sin(giro) * 0.7, Math.cos(giro) * 1.6); f.g.position.set(pos.x, area.y + 4.5 + 0.4 * Math.sin(t * 0.9), pos.z); f.g.rotation.y = yaw;
       } else if (stato === 'sta') {
         timer -= dt;
         if (timer <= 0) { meta.set(rnd(area.x0, area.x1), area.y, rnd(area.z0, area.z1)); if (meta.distanceTo(pos) > 2) { stato = 'va'; suona(f, f.va); } else timer = 1; }
