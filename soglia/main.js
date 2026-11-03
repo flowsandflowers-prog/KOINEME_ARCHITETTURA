@@ -113,8 +113,9 @@ async function start() {
   VF.userData.set = (on) => { accesaT = on ? 1 : 0; if (!on) accesa = 0; };
 
   /* ---------- il mutaforma: in attesa sulla piattaforma davanti al primo passaggio; vaga e, a caso, cambia forma ---------- */
-  const MUTA = await creaMutaforma(scene, { x0: SX - 33, x1: W.SOGLIA_X[0] - 3, z0: -11, z1: 11, y: Q,
-    volo: [[SX - 28, Q + 4.5, 0], [SX - 8, Q + 30, 8], [40, Q + 46, 22], [NC.x - 12, Q + 60, 54], [NC.x + 55, Q + 66, 8], [NC.x + 18, Q + 60, -56], [NC.x - 52, Q + 50, -40], [20, Q + 38, -20], [SX - 18, Q + 18, -10], [SX - 38, Q + 6, -2]].map((p) => V(...p)) }).catch((e) => { console.warn(e); return null; });
+  const MUTA = await creaMutaforma(scene, { x0: SX - 33, x1: W.SOGLIA_X[0] - 4, z0: -17, z1: 10, y: Q,
+    // il giro della cicogna: un anello chiuso che parte e torna davanti alla Soglia, alto sopra la Soglia e intorno al nido
+    volo: [...Array(40)].map((_, i) => { const th = Math.PI + (i / 40) * Math.PI * 2, c = (1 + Math.cos(th)) / 2; return V(68 + 116 * Math.cos(th), Q + 5 + 52 * Math.pow(c, 0.6), 46 * Math.sin(th)); }) }).catch((e) => { console.warn(e); return null; });
 
   /* ---------- le inquadrature del racconto ---------- */
   // f: 's' = sale e scende con il livello; 'w' = fissa
@@ -194,7 +195,7 @@ async function start() {
     ['soglia', [SX - 29, Q + 1.7, 0], [SX + 10, Q + 11, 0], 's', 0], ['soglia', [SX - 9, Q + 1.7, 0], [SX + 30, Q + 11, 0], 's', 1], ['soglia', [SX + 11, Q + 1.7, 0], [SX + 50, Q + 11, 0], 's', 2],
     ['vie', [SX + 34, Q + 1.7, 0.5], [GX - 52, Q + 3, 0], 's'], ['anticamera', [GX - 60, Q + 1.9, 0.2], [GX - 40, Q + 2.2, -1], 's'],
     ['stanza', [NC.x - 9, Q + 1.7, NC.z + 7], [NC.x + 4, Q + 12, NC.z - 4], 's'], ['mezzanino', [W.MZ.x + 8, W.MZ.y + 1.5, W.MZ.z + 10], [NC.x, Q + 24, NC.z], 's'],
-    (W.MOBIUS ? ['corridoio', [40, Q + 1.7, 0.3], [60, Q + 14, 0], 's'] : ['corridoio', [GX - 22, Q + 13, 30], [GX + 24, Q + 12, 22], 's']), ['vie', [SX + 31, Q + 1.7, W.SCALA.z], [SX - 60, FOND, W.SCALA.z], 's'],
+    (W.MOBIUS ? ['corridoio', [40, Q + 1.7, 0.3], [60, Q + 14, 0], 's'] : ['corridoio', [GX - 22, Q + 13, 30], [GX + 24, Q + 12, 22], 's']), ['vie', [SX + 31, Q + 1.7, W.SCALA.z], [SX - 30, FOND, W.SCALA.z2], 's'],
     ['sotto', [SX - 36, 1.8, 30], [60, 1, -10], 'b'], ['fondamenta', [20, FOND + 5, 46], [20, FOND + 1, 0], 'w'],
   ];
   const TOUR_KEYS = TOUR.map((t) => t[0]);
@@ -267,8 +268,8 @@ async function start() {
       anticamera: [P(N0.x - 4, Q, 0), neck(0.1)],
       corridoio: W.MOBIUS ? [P(48, Q, 0), P(55.5, Q, 0), ...[0.08, 0.18, 0.3, 0.42].map((th) => { const p = W.mobius(th, 0, V(0, 0, 0)); return P(p.x, p.y, p.z); })] : [P(N0.x - 4, Q, 0), P(N0.x + 4, Q, -6), ...[0.02, 0.1, 0.2, 0.3, 0.4, 0.5].map((t) => { const p = W.CORR.getPoint(t); return P(p.x, p.y, p.z); })],
       mezzanino: [P(N0.x - 4, Q, 0), neck(0.5), neck(0.95), P(NC.x - 4, Q, NC.z + 2), P(NC.x + 10.4, Q, NC.z + 5)],
-      sotto: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(W.SCALA.xL, W.SCALA.ym + 0.5, W.SCALA.z), P(W.SCALA.xE, W.SCALA.ym + 0.5, W.SCALA.z), P(-10, 0.6, 30, 'b')],
-      fondamenta: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(W.SCALA.xL, W.SCALA.ym + 0.5, W.SCALA.z), P(W.SCALA.xE, W.SCALA.ym + 0.5, W.SCALA.z), P(W.SCALA.x1 - 2, FOND + 0.6, W.SCALA.z, 'w'), P(-10, FOND + 0.6, 40, 'w')],
+      sotto: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(W.SCALA.xL, W.SCALA.ym + 0.5, W.SCALA.z), P(W.SCALA.xE + 3, W.SCALA.ym + 0.5, (W.SCALA.z + W.SCALA.z2) / 2), P(W.SCALA.xL, W.SCALA.ym + 0.5, W.SCALA.z2), P(W.SCALA.x1 + 1, FOND + 0.6, W.SCALA.z2), P(W.SCALA.x1 + 8, 0.6, 32, 'b')],
+      fondamenta: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(W.SCALA.xL, W.SCALA.ym + 0.5, W.SCALA.z), P(W.SCALA.xE + 3, W.SCALA.ym + 0.5, (W.SCALA.z + W.SCALA.z2) / 2), P(W.SCALA.xL, W.SCALA.ym + 0.5, W.SCALA.z2), P(W.SCALA.x1 + 1, FOND + 0.6, W.SCALA.z2), P(-10, FOND + 0.6, 40, 'w')],
       struttura: [P(SX + 30, Q, 0)],
     }[s];
     if (s === 'struttura') { strutturaT = 1; flyTo('struttura', 5); await say('voce-struttura', RACCORDI.voceStruttura); }

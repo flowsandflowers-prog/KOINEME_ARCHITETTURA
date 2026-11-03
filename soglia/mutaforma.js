@@ -57,7 +57,7 @@ export async function creaMutaforma(scene, area) {
   function mostra(fm) { for (const x of forme) x.g.visible = x === fm; }
   function avvia(fm) {
     if (fm.vola) { suona(fm, Object.keys(fm.act)[0]); stato = 'vola'; u = 0; }
-    else { stato = 'sta'; timer = rnd(1, 2.5); suona(fm, fm.sta[0]); }
+    else { stato = 'sta'; timer = rnd(0.5, 1.5); suona(fm, fm.sta[0]); }
   }
   function colloca(fm) {
     if (fm.vola) { VOLO.getPointAt(0, fm.g.position); VOLO.getTangentAt(0, tg); yaw = Math.atan2(tg.x, tg.z); } else fm.g.position.set(pos.x, area.y, pos.z);
@@ -83,13 +83,13 @@ export async function creaMutaforma(scene, area) {
         pos.set(f.g.position.x, area.y, f.g.position.z); prossimo = u >= 1 ? 0 : 1;
       } else if (stato === 'sta') {
         timer -= dt;
-        if (timer <= 0) { meta.set(rnd(area.x0, area.x1), area.y, rnd(area.z0, area.z1)); if (meta.distanceTo(pos) > 2) { stato = 'va'; suona(f, f.va); } else timer = 1; }
+        if (timer <= 0) { meta.set(rnd(area.x0, area.x1), area.y, rnd(area.z0, area.z1)); if (meta.distanceTo(pos) > 5) { stato = 'va'; suona(f, f.va); } else timer = 1; }
       } else { // va: si gira piano verso la meta e cammina
         tv.subVectors(meta, pos); const d = Math.hypot(tv.x, tv.z), want = Math.atan2(tv.x, tv.z);
         let dy = want - yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); yaw += Math.sign(dy) * Math.min(Math.abs(dy), dt * 2.2);
         const avanti = Math.abs(dy) < 0.9 ? f.vel * dt : 0; pos.x += Math.sin(yaw) * avanti; pos.z += Math.cos(yaw) * avanti;
         f.g.position.set(pos.x, area.y, pos.z); f.g.rotation.y = yaw;
-        if (d < 0.4) { stato = 'sta'; timer = rnd(1.5, 4.5); suona(f, f.sta[Math.floor(Math.random() * f.sta.length)]); }
+        if (d < 0.4) { stato = 'sta'; timer = rnd(0.8, 2.5); suona(f, f.sta[Math.floor(Math.random() * f.sta.length)]); }
       }
       if (prossimo <= 0) { // cambia forma: mai la stessa
         const altre = forme.filter((x) => x !== f), verso = altre[Math.floor(Math.random() * altre.length)];
