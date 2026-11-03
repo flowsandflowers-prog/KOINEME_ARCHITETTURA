@@ -97,7 +97,7 @@ async function start() {
   if (!LOW) { sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -240, right: 240, top: 180, bottom: -140, near: 10, far: 900 }); sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.5; }
   await step(0.25);
   const pmrem = new THREE.PMREMGenerator(renderer); const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; pmrem.dispose();
-  const W = costruisci(scene, { low: LOW, env: envTex });
+  const W = costruisci(scene, { low: LOW, env: envTex, corridoio: new URLSearchParams(location.search).get('corridoio') === 'anello' ? 'anello' : 'nastro' });
   await step(0.75);
   const ST = { ...W.S0, appoggi: [...W.S0.appoggi] };
   let allineaT = 0, strutturaT = 0;
@@ -145,11 +145,11 @@ async function start() {
     edificio: [[-250, 72, 205], [40, 10, 0], 'w'], quote: [[60, 18, 300], [40, 2, 0], 'w'],
     soglia: [[SX - 84, Q + 1.7, 1.0], [SX + 40, Q + 15, 0], 's'], vie: [[SX + 40, Q + 18, 95], [SX - 2, Q / 2, 12], 's'],
     stanza: [[NC.x - 7, Q + 6, NC.z + 7], [NC.x + 3, Q + 4, NC.z - 3], 's'], anticamera: [[GX - 66, Q + 2.4, 3.5], [GX - 42, Q + 2.2, -1.2], 's'],
-    corridoio: [[GX - 20, Q + 34, 84], [GX, Q + 12, -4], 's'], mezzanino: [[W.MZ.x - 8, W.MZ.y + 4, W.MZ.z + 14], [W.MZ.x, W.MZ.y, W.MZ.z], 's'],
+    corridoio: W.MOBIUS ? [[90, Q + 16, 46], [56, Q + 12, 0], 's'] : [[GX - 20, Q + 34, 84], [GX, Q + 12, -4], 's'], mezzanino: [[W.MZ.x - 44, W.MZ.y + 2, W.MZ.z + 34], [W.MZ.x - 9, W.MZ.y + 8, W.MZ.z - 7], 's'],
     sotto: [[70, 36, 150], [40, -4, -30], 's'], fondamenta: [[10, FOND + 10, 140], [10, FOND + 2, 0], 'w'],
     struttura: [[GX - 50, Q + 230, 40], [GX - 50, Q, 0], 's'],
   };
-  const tmpA = V(0, 0, 0), tmpB = V(0, 0, 0), tmpC = V(0, 0, 0), RDIR = V(0, 0, 0);
+  const tmpA = V(0, 0, 0), tmpB = V(0, 0, 0), tmpC = V(0, 0, 0), RDIR = V(0, 0, 0), RN = V(0, 0, 0), RF = V(0, 0, 0), RX = V(0, 0, 0), RMAT = new THREE.Matrix4();
   const off = (f) => (f === 's' ? ST.liv : 0);
   let fly = null;
   function flyTo(k, dur = 3) { const r = RAC[k]; if (!r) return; controls.autoRotate = false; fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: V(r[0][0], r[0][1] + off(r[2]), r[0][2]), t1: V(r[1][0], r[1][1] + off(r[2]), r[1][2]), s: performance.now(), d: dur * 1000 }; }
@@ -216,8 +216,8 @@ async function start() {
     ['edificio', [SX - 120, Q + 1.7, 0.3], [SX, Q + 8, 0], 's'], ['soglia', [SX - 40, Q + 1.7, 0.3], [SX + 10, Q + 10, 0], 's'],
     ['soglia', [SX - 29, Q + 1.7, 0], [SX + 10, Q + 11, 0], 's', 0], ['soglia', [SX - 9, Q + 1.7, 0], [SX + 30, Q + 11, 0], 's', 1], ['soglia', [SX + 11, Q + 1.7, 0], [SX + 50, Q + 11, 0], 's', 2],
     ['vie', [SX + 34, Q + 1.7, 0.5], [GX - 52, Q + 3, 0], 's'], ['anticamera', [GX - 60, Q + 1.9, 0.2], [GX - 40, Q + 2.2, -1], 's'],
-    ['stanza', [NC.x - 9, Q + 1.7, NC.z + 7], [NC.x + 4, Q + 12, NC.z - 4], 's'], ['mezzanino', [W.MZ.x - 2, W.MZ.y + 2, W.MZ.z], [NC.x - 8, Q + 8, NC.z - 6], 's'],
-    ['corridoio', [GX - 22, Q + 13, 30], [GX + 24, Q + 12, 22], 's'], ['vie', [SX + 31, Q + 1.7, W.SCALA.z], [SX - 30, 0, W.SCALA.z], 's'],
+    ['stanza', [NC.x - 9, Q + 1.7, NC.z + 7], [NC.x + 4, Q + 12, NC.z - 4], 's'], ['mezzanino', [W.MZ.x + 8, W.MZ.y + 1.5, W.MZ.z + 10], [NC.x, Q + 24, NC.z], 's'],
+    (W.MOBIUS ? ['corridoio', [40, Q + 1.7, 0.3], [60, Q + 14, 0], 's'] : ['corridoio', [GX - 22, Q + 13, 30], [GX + 24, Q + 12, 22], 's']), ['vie', [SX + 31, Q + 1.7, W.SCALA.z], [SX - 30, 0, W.SCALA.z], 's'],
     ['sotto', [SX - 36, 1.8, 30], [60, 1, -10], 's'], ['fondamenta', [20, FOND + 5, 46], [20, FOND + 1, 0], 'w'],
   ];
   const TOUR_KEYS = TOUR.map((t) => t[0]);
@@ -288,8 +288,8 @@ async function start() {
     const strada = {
       stanza: [P(N0.x - 4, Q, 0), neck(0.15), neck(0.5), neck(0.95), P(NC.x - 6, Q, NC.z + 2)],
       anticamera: [P(N0.x - 4, Q, 0), neck(0.1)],
-      corridoio: [P(N0.x - 4, Q, 0), P(N0.x + 4, Q, -6), ...[0.02, 0.1, 0.2, 0.3, 0.4, 0.5].map((t) => { const p = W.CORR.getPoint(t); return P(p.x, p.y, p.z); })],
-      mezzanino: [P(N0.x - 4, Q, 0), neck(0.5), neck(0.95), P(NC.x - 4, Q, NC.z + 2), P(W.MZ.x, W.MZ.y + 0.3, W.MZ.z)],
+      corridoio: W.MOBIUS ? [P(48, Q, 0), P(55.5, Q, 0), ...[0.08, 0.18, 0.3, 0.42].map((th) => { const p = W.mobius(th, 0, V(0, 0, 0)); return P(p.x, p.y, p.z); })] : [P(N0.x - 4, Q, 0), P(N0.x + 4, Q, -6), ...[0.02, 0.1, 0.2, 0.3, 0.4, 0.5].map((t) => { const p = W.CORR.getPoint(t); return P(p.x, p.y, p.z); })],
+      mezzanino: [P(N0.x - 4, Q, 0), neck(0.5), neck(0.95), P(NC.x - 4, Q, NC.z + 2), P(NC.x + 10.4, Q, NC.z + 5)],
       sotto: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(SX - 30, 0.5, W.SCALA.z), P(SX - 40, 0.6, 30), P(-10, 0.6, 30)],
       fondamenta: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(SX - 30, 0.5, W.SCALA.z), P(SX - 40, 0.5, 30), P(-10, FOND + 0.6, 40, 'w')],
       struttura: [P(SX + 30, Q, 0)],
@@ -348,7 +348,10 @@ async function start() {
     // le figure in attesa, quella già passata, la ruminazione
     attesa[0].position.set(SX - 58, Q + L, 0.6); attesa[1].position.set(SX - 61, Q + L, -0.7);
     passato.position.set(SX + 70 + 8 * Math.sin(t * 0.08), Q + L, -0.8);
-    if (RUM.visible) { const ph = t * 0.25, u = 0.44 + 0.08 * (0.5 - 0.5 * Math.cos(ph)); W.CORR.getPoint(u, tmpA); W.CORR.getTangent(u, tmpB); const dir = Math.sin(ph) >= 0 ? 1 : -1; RUM.position.set(tmpA.x, tmpA.y + L, tmpA.z); RUM.rotation.y = Math.atan2(tmpB.x * dir, tmpB.z * dir); }
+    if (RUM.visible && W.MOBIUS) { // sul nastro: cammina senza fine; i piedi seguono la superficie, anche capovolta
+      const th = (t * 1.3 / 13) % (Math.PI * 4); W.mobius(th, 0, tmpA, RN); W.mobius(th + 0.01, 0, tmpB); RF.subVectors(tmpB, tmpA).normalize(); RX.crossVectors(RN, RF);
+      RMAT.makeBasis(RX, RN, RF); RUM.quaternion.setFromRotationMatrix(RMAT); RUM.position.set(tmpA.x, tmpA.y + L, tmpA.z);
+    } else if (RUM.visible) { const ph = t * 0.25, u = 0.44 + 0.08 * (0.5 - 0.5 * Math.cos(ph)); W.CORR.getPoint(u, tmpA); W.CORR.getTangent(u, tmpB); const dir = Math.sin(ph) >= 0 ? 1 : -1; RUM.position.set(tmpA.x, tmpA.y + L, tmpA.z); RUM.rotation.y = Math.atan2(tmpB.x * dir, tmpB.z * dir); }
     VF.userData.cammina(!!cammino, cammino ? cammino.vel : 1.6);
     for (let f = 0; f < FIG.length; f++) if (FIG[f].userData.mixer && FIG[f].visible) FIG[f].userData.mixer.update(dt);
     // la voce che cammina
@@ -387,7 +390,7 @@ async function start() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     for (let j = 0; j < LAB.length; j++) {
       const lb = LAB[j]; tmpC.copy(lb.p); if (lb.parent !== scene) tmpC.y += L; tmpC.project(camera);
-      const vis = tmpC.z < 1 && Math.abs(tmpC.x) < 1.05 && Math.abs(tmpC.y) < 1.05 && !tour && (lb.small ? lb.k === current : INSIEME.has(current));
+      const vis = tmpC.z < 1 && Math.abs(tmpC.x) < 1.05 && Math.abs(tmpC.y) < 1.05 && !tour && (lb.small ? lb.k === current || (lb.k === 'stanza' && INSIEME.has(current)) : INSIEME.has(current));
       lb.el.style.display = vis ? '' : 'none'; if (vis) { lb.el.style.left = ((tmpC.x + 1) / 2) * w + 'px'; lb.el.style.top = ((1 - tmpC.y) / 2) * h + 'px'; }
     }
     if (qPos) { tmpC.copy(qPos.v); tmpC.y += off(qPos.f); tmpC.project(camera); qtag.style.left = ((tmpC.x + 1) / 2) * w + 'px'; qtag.style.top = ((1 - tmpC.y) / 2) * h + 'px'; }
