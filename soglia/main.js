@@ -16,6 +16,7 @@ import { createPicker } from '../src/lib/picker.js';
 import { disposeObject } from '../src/lib/dispose.js';
 import { SPAZI, ORDINE, ETICHETTE, DOMANDE, DOVE_VA, VOCI, STANZE_CHIUSE, INTERFACCIA, RACCORDI, MEZZANINO_SPIEGAZIONE } from './testi.js';
 import { costruisci, Q, FOND, SX, GX, NC } from './mondo.js';
+import { posaAppesa } from './animali.js';
 
 const $ = (id) => document.getElementById(id);
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -90,7 +91,8 @@ async function start() {
   scene.add(new THREE.Mesh(new THREE.SphereGeometry(4000, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false,
     vertexShader: 'varying float h;void main(){h=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
     fragmentShader: 'varying float h;void main(){vec3 a=vec3(.44,.43,.42);vec3 b=vec3(.78,.73,.64);gl_FragColor=vec4(mix(b,a,smoothstep(0.,.5,h)),1.);}' })));
-  scene.fog = new THREE.FogExp2(0xb4ab9c, 0.0014);
+  // la nebbia comincia oltre l'edificio: il modello resta nitido, si sfuma solo l'orizzonte
+  scene.fog = new THREE.Fog(0xb4ab9c, 620, 2600);
   scene.add(new THREE.HemisphereLight(0xd8d2c6, 0x34302b, 0.55));
   // sole basso: ombre lunghe, più contrasto
   const sun = new THREE.DirectionalLight(0xf6e4c8, 3.1); sun.position.set(-230, 80, 170); scene.add(sun);
@@ -137,6 +139,10 @@ async function start() {
   const DARK = new THREE.Color(0x1b1916), LIGHT = new THREE.Color(0x9aa6b8);
   VF.userData.set = (on) => { for (const m of VF.userData.meshes) m.material = vfM; accesaT = on ? 1 : 0; if (!on) accesa = 0; };
   RUM.userData.cammina(true, 1.2);
+  // il mezzanino: la scimmia appesa alla fune (dopo la Soglia: luminosa come le altre figure)
+  let SCIMMIA = null;
+  { const g = await new GLTFLoader().loadAsync('modelli/animali/scimmia.glb').catch(() => null);
+    if (g) { g.scene.traverse((o) => { if (o.isMesh) { o.material = litM; o.castShadow = true; o.frustumCulled = false; } }); SCIMMIA = posaAppesa(g.scene, 1.3); W.appendi(SCIMMIA.g); } }
   VF.visible = false; RUM.visible = false;
 
   /* ---------- le inquadrature del racconto ---------- */
@@ -145,7 +151,7 @@ async function start() {
     edificio: [[-250, 72, 205], [40, 10, 0], 'w'], quote: [[60, 18, 300], [40, 2, 0], 'w'],
     soglia: [[SX - 84, Q + 1.7, 1.0], [SX + 40, Q + 15, 0], 's'], vie: [[SX + 40, Q + 18, 95], [SX - 2, Q / 2, 12], 's'],
     stanza: [[NC.x - 7, Q + 6, NC.z + 7], [NC.x + 3, Q + 4, NC.z - 3], 's'], anticamera: [[GX - 66, Q + 2.4, 3.5], [GX - 42, Q + 2.2, -1.2], 's'],
-    corridoio: W.MOBIUS ? [[90, Q + 16, 46], [56, Q + 12, 0], 's'] : [[GX - 20, Q + 34, 84], [GX, Q + 12, -4], 's'], mezzanino: [[W.MZ.x - 44, W.MZ.y + 2, W.MZ.z + 34], [W.MZ.x - 9, W.MZ.y + 8, W.MZ.z - 7], 's'],
+    corridoio: W.MOBIUS ? [[90, Q + 16, 46], [56, Q + 12, 0], 's'] : [[GX - 20, Q + 34, 84], [GX, Q + 12, -4], 's'], mezzanino: [[W.MZ.x - 13, W.MZ.y + 0.5, W.MZ.z + 10], [W.MZ.x, W.MZ.y + 1.5, W.MZ.z], 's'],
     sotto: [[70, 36, 150], [40, -4, -30], 's'], fondamenta: [[10, FOND + 10, 140], [10, FOND + 2, 0], 'w'],
     struttura: [[GX - 50, Q + 230, 40], [GX - 50, Q, 0], 's'],
   };
@@ -352,6 +358,7 @@ async function start() {
       const th = (t * 1.3 / 13) % (Math.PI * 4); W.mobius(th, 0, tmpA, RN); W.mobius(th + 0.01, 0, tmpB); RF.subVectors(tmpB, tmpA).normalize(); RX.crossVectors(RN, RF);
       RMAT.makeBasis(RX, RN, RF); RUM.quaternion.setFromRotationMatrix(RMAT); RUM.position.set(tmpA.x, tmpA.y + L, tmpA.z);
     } else if (RUM.visible) { const ph = t * 0.25, u = 0.44 + 0.08 * (0.5 - 0.5 * Math.cos(ph)); W.CORR.getPoint(u, tmpA); W.CORR.getTangent(u, tmpB); const dir = Math.sin(ph) >= 0 ? 1 : -1; RUM.position.set(tmpA.x, tmpA.y + L, tmpA.z); RUM.rotation.y = Math.atan2(tmpB.x * dir, tmpB.z * dir); }
+    if (SCIMMIA) SCIMMIA.oscilla(t);
     VF.userData.cammina(!!cammino, cammino ? cammino.vel : 1.6);
     for (let f = 0; f < FIG.length; f++) if (FIG[f].userData.mixer && FIG[f].visible) FIG[f].userData.mixer.update(dt);
     // la voce che cammina

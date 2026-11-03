@@ -62,15 +62,19 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   // l'acqua: ben sotto la pellicola (niente sfarfallio fra le due) e quasi opaca: dall'alto il fondo non traspare
   const WY = -7;
   const waterMat = new THREE.MeshStandardMaterial({ color: 0x4f6266, roughness: 0.1, metalness: 0.3, normalMap: ripple, normalScale: new THREE.Vector2(0.35, 0.35), transparent: true, opacity: 0.9, clippingPlanes: cut, depthWrite: false });
-  const surf = add(new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), waterMat), SOTTO, 0, WY, 0); surf.rotation.x = -Math.PI / 2; surf.renderOrder = 2;
+  // il serbatoio: un rettangolo in pianta centrato sull'asse del passaggio, fra la Soglia e il nido. L'ampiezza lo allarga
+  const BC = V(55, 0, 0), BX = 170, BZ = 60; // centro e mezze misure a ampiezza media
+  const surf = add(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), waterMat), SOTTO, BC.x, WY, BC.z); surf.rotation.x = -Math.PI / 2; surf.renderOrder = 2;
   // il corpo d'acqua sul taglio: scurisce in profondità. Altezza 1, scalata a ogni fotogramma fino alle fondamenta
-  const faceG = new THREE.PlaneGeometry(3000, 1, 1, 16); faceG.translate(0, -0.5, 0);
+  const faceG = new THREE.PlaneGeometry(1, 1, 1, 16); faceG.translate(0, -0.5, 0);
   { const col = []; for (let i = 0; i < faceG.attributes.position.count; i++) { const t = faceG.attributes.position.getY(i) + 1; const c = new THREE.Color(0x15202a).lerp(new THREE.Color(0x7b9a9c), Math.pow(t, 1.4)); col.push(c.r, c.g, c.b); } faceG.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); }
-  const face = add(new THREE.Mesh(faceG, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false })), scene, 0, 0, TAGLIO + 0.2); face.renderOrder = 3;
-  const menisco = add(new THREE.Mesh(new THREE.PlaneGeometry(3000, 0.25), new THREE.MeshBasicMaterial({ color: 0xe9efed })), scene, 0, 0, TAGLIO + 0.25);
+  // le quattro pareti d'acqua del serbatoio (davanti coincide con il taglio), scalate a ogni fotogramma
+  const faceM = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
+  const pareti = [0, 1, 2, 3].map((k) => { const m = add(new THREE.Mesh(faceG, faceM), scene); m.rotation.y = [0, Math.PI, -Math.PI / 2, Math.PI / 2][k]; m.renderOrder = 3; return m; });
+  const menisco = add(new THREE.Mesh(new THREE.PlaneGeometry(1, 0.25), new THREE.MeshBasicMaterial({ color: 0xe9efed })), scene, 0, 0, TAGLIO + 0.25);
   // particelle sospese: in tutta l'acqua e, rade, nell'aria intorno all'edificio. Moto browniano calcolato nella GPU
   // (somma di oscillazioni con fasi casuali: ogni particella vaga senza meta, nessun calcolo per fotogramma)
-  const motoU = { uT: { value: 0 }, uAtt: { value: 0.4 }, uBot: { value: FOND + 1 }, uTop: { value: -10 }, uPR: { value: 1 } };
+  const motoU = { uBox: { value: new THREE.Vector4(-1e4, 1e4, -1e4, 1e4) }, uT: { value: 0 }, uAtt: { value: 0.4 }, uBot: { value: FOND + 1 }, uTop: { value: -10 }, uPR: { value: 1 } };
   const dot = canvasTex(64, 64, (g) => { const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.4, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); }, null, false);
   function polvere(n, box, acqua, col, size) {
     const pos = [], ph = [];
@@ -79,22 +83,22 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
     g.boundingSphere = new THREE.Sphere(V(0, 0, 0), 4000);
     const mat = new THREE.ShaderMaterial({ uniforms: { ...motoU, uMap: { value: dot }, uCol: { value: new THREE.Color(col) }, uSize: { value: size }, uAcqua: { value: acqua ? 1 : 0 } },
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-      vertexShader: `uniform float uT,uAtt,uBot,uTop,uPR,uSize,uAcqua;attribute vec4 ph;varying float vA;
+      vertexShader: `uniform float uT,uAtt,uBot,uTop,uPR,uSize,uAcqua;uniform vec4 uBox;attribute vec4 ph;varying float vA;
         vec3 vaga(vec4 p,float t){return vec3(sin(t*.23+p.x)+.5*sin(t*.61+p.y*1.3)+.25*sin(t*1.37+p.z*1.7),sin(t*.19+p.y)+.5*sin(t*.53+p.z*1.1)+.25*sin(t*1.21+p.x*1.9),sin(t*.27+p.z)+.5*sin(t*.67+p.x*.9)+.25*sin(t*1.43+p.y*1.5));}
         void main(){vec3 q=position;if(uAcqua>.5)q.y=mix(uBot,uTop,q.y);
           float t=uT*(.35+1.4*uAtt)*ph.w;q+=vaga(ph,t)*(1.2+2.5*uAtt);
-          if(uAcqua>.5){q.y=clamp(q.y,uBot,uTop);q.z=min(q.z,53.6);}
+          if(uAcqua>.5){q.y=clamp(q.y,uBot,uTop);q.x=clamp(q.x,uBox.x,uBox.y);q.z=clamp(q.z,uBox.z,uBox.w);}
           vec4 mv=modelViewMatrix*vec4(q,1.);gl_Position=projectionMatrix*mv;gl_PointSize=uSize*uPR*(300./-mv.z);
           vA=(.55+.45*sin(t*1.7+ph.x))*smoothstep(4000.,300.,-mv.z);}`,
       fragmentShader: `uniform sampler2D uMap;uniform vec3 uCol;varying float vA;void main(){float a=texture2D(uMap,gl_PointCoord).a;gl_FragColor=vec4(uCol*a*vA,a*vA);}` });
     const pts = new THREE.Points(g, mat); pts.frustumCulled = false; pts.renderOrder = 4; scene.add(pts); return pts;
   }
-  polvere(low ? 1600 : 4000, [-280, 320, 0, 0, -230, TAGLIO - 0.5], true, 0xdde8e6, 1.5);       // nell'acqua
+  polvere(low ? 1600 : 4000, [BC.x - BX * 0.75, BC.x + BX * 0.75, 0, 0, -BZ * 0.75, TAGLIO - 0.5], true, 0xdde8e6, 1.5);       // nell'acqua
   const aria = polvere(low ? 500 : 1300, [-200, 260, -10, 110, -140, 110], false, 0xf3e3c4, 1.6); // nell'aria, segue il livello
   SOPRA.attach(aria);
 
   /* ---------- i quattro appoggi: tronchi rossi; sopra, una pellicola blu che poggia sulle loro cime ---------- */
-  const ALBERI = [[-95, 8], [-8, 36], [80, 4], [165, 18]];
+  const ALBERI = [[-40, -30], [-40, 30], [150, -30], [150, 30]]; // ai quattro angoli, simmetrici rispetto al passaggio
   const alberi = ALBERI.map(([x, z]) => {
     const g = new THREE.Group(); g.position.set(x, 0, z); SOTTO.add(g);
     const trunk = shade(add(new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.4, 1, 20), M.bark.clone()), g, 0, 0.5, 0));
@@ -102,7 +106,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
     return { g, trunk, x, z, presente: 1 };
   });
   // la pellicola: tesa sulle cime dei tronchi, si affloscia fra l'uno e l'altro
-  const FC = V(40, 0, -75), FW = 520, FD = 260;
+  const FC = V(BC.x, 0, BC.z), FW = 2 * BX - 20, FD = 2 * BZ - 8;
   const filmG = new THREE.PlaneGeometry(FW, FD, low ? 90 : 140, low ? 46 : 72); filmG.rotateX(-Math.PI / 2);
   const filmBase = Float32Array.from(filmG.attributes.position.array);
   const filmMat = new THREE.MeshStandardMaterial({ color: 0x2f6db5, roughness: 0.18, metalness: 0.15, transparent: false, opacity: 1, side: THREE.DoubleSide, clippingPlanes: cut });
@@ -265,7 +269,6 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   const TIP = P2[P2.length - 1], ROPE = 8;
   const corda = add(new THREE.Group(), piv2, TIP.x, TIP.y, TIP.z);
   add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, ROPE, 6).translate(0, -ROPE / 2, 0), new THREE.MeshStandardMaterial({ color: 0x2a2520, roughness: 0.9 })), corda);
-  add(new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.07, 8, 24), new THREE.MeshStandardMaterial({ color: 0x2a2520, roughness: 0.9 })), corda, 0, -ROPE - 0.4, 0);
   const MZ = V(ROD.x + M1.x + TIP.x, ROD.y + M1.y + TIP.y - ROPE, ROD.z + M1.z + TIP.z);
   const axO = V(0, 0, 0).crossVectors(V0Y, dirO).normalize(); // asse di flessione: perpendicolare alla direzione della punta
   const qa = new THREE.Quaternion(), qb = new THREE.Quaternion(), qw = new THREE.Quaternion(), axL = V(0, 0, 0);
@@ -288,7 +291,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   proxy(new THREE.CylinderGeometry(5, 5, 32, 10), SOPRA, GX - 36, Q + 2, -1.5, 'anticamera').rotation.z = Math.PI / 2;
   proxy(new THREE.SphereGeometry(4.5, 10, 8), SOPRA, MZ.x, MZ.y, MZ.z, 'mezzanino');
   proxy(new THREE.BoxGeometry(62, 8, 8), SOPRA, SX, Q / 2, 16.5, 'vie').rotation.z = Math.atan2(Q, 60);
-  proxy(new THREE.BoxGeometry(600, 2, 300), SOTTO, 0, 0, -100, 'sotto');
+  proxy(new THREE.BoxGeometry(2 * BX, 2, 2 * BZ), SOTTO, BC.x, 0, BC.z, 'sotto');
   proxy(new THREE.BoxGeometry(600, 10, 300), scene, 0, FOND - 2, -100, 'fondamenta');
   for (const k of [0, 16, 32, 48]) { const p = CORR.getPoint(0.15 + k / 64 * 0.7); proxy(new THREE.SphereGeometry(4, 8, 6), SOPRA, p.x, p.y, p.z, 'corridoio'); }
   for (const y of [0.3, 0.6]) proxy(new THREE.CylinderGeometry(2.2, 2.2, 8, 8), SOPRA, ROD.x, Q + 30 + y * 20, ROD.z, 'mezzanino');
@@ -296,7 +299,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   const ANCORE = {
     soglia: [SOPRA, V(SX, Q + 33, 0)], stanza: [SOPRA, V(NC.x, NC.y + 34, NC.z)], anticamera: [SOPRA, V(GX - 40, Q + 9, 0)],
     corridoio: [SOPRA, CORR.getPoint(0.5).add(V(0, 4, 0))], mezzanino: [SOPRA, V(MZ.x + 12, MZ.y + 2, MZ.z + 10)], vie: [SOPRA, V(SX + 6, Q / 2 + 8, 22)],
-    sotto: [SOTTO, V(40, 3, 40)], fondamenta: [scene, V(70, FOND + 6, 45)], struttura: [SOPRA, V(NC.x - 50, Q + 2, NC.z + 36)],
+    sotto: [SOTTO, V(BC.x, 3, 40)], fondamenta: [scene, V(70, FOND + 6, 45)], struttura: [SOPRA, V(NC.x - 50, Q + 2, NC.z + 36)],
   };
   const CHIUSE = OTTO.map((c) => [SOPRA, c.clone().add(V(0, -8, 0))]);
   const APPOGGI = alberi.map((a) => [SOTTO, V(a.x, 4, a.z)]);
@@ -313,14 +316,20 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
     const k = Math.min(1, dt * (1.6 - 1.1 * st.ampiezza));
     liv += (base - calo - liv) * k; st.liv = liv;
     SOPRA.position.y = liv; SOTTO.position.y = liv;
-    face.scale.y = Math.max(0.01, liv + WY - FOND); face.position.y = liv + WY; menisco.position.y = liv + WY - 0.12;
+    { const sc = 0.75 + 0.5 * st.ampiezza, hx = BX * sc, hz = BZ * sc, zf = Math.min(TAGLIO, hz), h = Math.max(0.01, liv + WY - FOND), y = liv + WY;
+      surf.scale.set(2 * hx, 2 * hz, 1);
+      pareti[0].position.set(BC.x, y, zf + 0.2); pareti[0].scale.set(2 * hx, h, 1);
+      pareti[1].position.set(BC.x, y, -hz); pareti[1].scale.set(2 * hx, h, 1);
+      pareti[2].position.set(BC.x - hx, y, (zf - hz) / 2); pareti[2].scale.set(zf + hz, h, 1);
+      pareti[3].position.set(BC.x + hx, y, (zf - hz) / 2); pareti[3].scale.set(zf + hz, h, 1);
+      menisco.position.set(BC.x, y - 0.12, zf + 0.25); menisco.scale.x = 2 * hx; motoU.uBox.value.set(BC.x - hx, BC.x + hx, -hz, zf - 0.5); }
     motoU.uT.value = t; motoU.uAtt.value = st.attivazione; motoU.uTop.value = liv + WY - 0.6;
     // i tronchi: dalle fondamenta alla pellicola; quello tolto si ritira verso il basso
     const span = Math.max(1, liv - 2.2 - FOND);
     for (let i = 0; i < 4; i++) { const a = alberi[i]; a.trunk.scale.set(1, span * (0.25 + 0.75 * a.presente), 1); a.trunk.position.y = -2.2 - span * 0.75 * (1 - a.presente); }
     // la pellicola: poggia sulle cime dei tronchi presenti; senza appoggio cede. L'ampiezza la allarga
     if ((fframe++ & 1) === 0) {
-      const p = filmG.attributes.position.array, sc = 0.75 + 0.5 * st.ampiezza, sig2 = 2 * 30 * 30, amp = 0.35 * st.attivazione;
+      const p = filmG.attributes.position.array, sc = 0.75 + 0.5 * st.ampiezza, sig2 = 2 * 42 * 42, amp = 0.35 * st.attivazione;
       for (let v = 0; v < p.length; v += 3) {
         const x = filmBase[v] * sc, z = filmBase[v + 2] * sc, wx = x + FC.x, wz = z + FC.z;
         let B = 0; for (let i = 0; i < 4; i++) { const a = alberi[i], dx = wx - a.x, dz = wz - a.z; const b = a.presente * Math.exp(-(dx * dx + dz * dz) / sig2); if (b > B) B = b; }
@@ -357,5 +366,5 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
     for (let i = 0; i < lame.length; i++) lame[i].material.opacity = Math.min(1, (i % 2 ? 0.4 : 0.32) * (0.85 + 0.15 * Math.sin(t * 0.6 + i)) * (1 + 1.8 * st.fessure[i >> 1]));
   }
 
-  return { motoU, mobius, MOBIUS: corridoio !== 'anello', SOPRA, SOTTO, aggiorna, S0, objectsToIntersect, ANCORE, CHIUSE, APPOGGI, CORPO, NECK, CORR, SOGLIA_X, NECK0, MZ, alberi, SCALA };
+  return { appendi: (o) => { o.position.y = -ROPE; corda.add(o); }, motoU, mobius, MOBIUS: corridoio !== 'anello', SOPRA, SOTTO, aggiorna, S0, objectsToIntersect, ANCORE, CHIUSE, APPOGGI, CORPO, NECK, CORR, SOGLIA_X, NECK0, MZ, alberi, SCALA };
 }
