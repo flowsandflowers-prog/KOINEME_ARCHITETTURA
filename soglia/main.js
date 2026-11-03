@@ -10,6 +10,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { createPicker } from '../src/lib/picker.js';
 import { disposeObject } from '../src/lib/dispose.js';
@@ -55,6 +56,12 @@ const panel = $('panel');
 $('closePanel').addEventListener('click', () => { panel.classList.add('closed'); $('openPanel').classList.add('on'); resize(); });
 $('openPanel').addEventListener('click', () => { panel.classList.remove('closed'); $('openPanel').classList.remove('on'); resize(); });
 
+/* ---------- niente zoom della pagina: il pizzico muove solo la camera ---------- */
+// (lo zoom del browser restava anche dopo aver ricaricato: la scena si impastava e non si recuperava)
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+window.addEventListener('wheel', (e) => { if (e.ctrlKey && e.target.id !== 'scene') e.preventDefault(); }, { passive: false });
+document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 && e.target.id !== 'scene') e.preventDefault(); }, { passive: false });
+
 /* ---------- caricamento ---------- */
 const loader = $('loader'), loadBar = $('loadBar');
 const step = (p) => { loadBar.style.transform = `scaleX(${p})`; return new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))); };
@@ -68,14 +75,18 @@ async function start() {
   /* ---------- renderer, scena, camera ---------- */
   const canvas = $('scene');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LOW, powerPreference: 'high-performance' });
-  let PR = Math.min(window.devicePixelRatio || 1, LOW ? 1 : 1.5); renderer.setPixelRatio(PR);
+  const PRMAX = Math.min(window.devicePixelRatio || 1, LOW ? 1.25 : 1.75), PRMIN = Math.min(1, PRMAX); let PR = PRMAX; renderer.setPixelRatio(PR);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.shadowMap.enabled = !LOW; renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.localClippingEnabled = true;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(42, 1, 0.2, 5000);
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.5, 5000);
   const controls = new OrbitControls(camera, canvas);
-  controls.enableDamping = true; controls.dampingFactor = 0.07; controls.maxDistance = 900; controls.minDistance = 2;
+  controls.enableDamping = true; controls.dampingFactor = 0.07; controls.maxDistance = 520; controls.minDistance = 6;
+  controls.zoomToCursor = false; controls.screenSpacePanning = true; controls.maxPolarAngle = Math.PI * 0.52;
+  // il bersaglio non esce mai dall'edificio: con il pizzico non si perde più la vista d'insieme
+  const LIM = new THREE.Box3(V(-260, FOND, -200), V(260, Q + 120, 160));
+  controls.addEventListener('change', () => { if (!LIM.containsPoint(controls.target)) { const b = LIM.clampPoint(controls.target, V(0, 0, 0)); camera.position.add(b.sub(controls.target)); controls.target.add(b); } });
   scene.add(new THREE.Mesh(new THREE.SphereGeometry(4000, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false,
     vertexShader: 'varying float h;void main(){h=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
     fragmentShader: 'varying float h;void main(){vec3 a=vec3(.44,.43,.42);vec3 b=vec3(.78,.73,.64);gl_FragColor=vec4(mix(b,a,smoothstep(0.,.5,h)),1.);}' })));
@@ -85,7 +96,8 @@ async function start() {
   const sun = new THREE.DirectionalLight(0xf6e4c8, 3.1); sun.position.set(-230, 80, 170); scene.add(sun);
   if (!LOW) { sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -240, right: 240, top: 180, bottom: -140, near: 10, far: 900 }); sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.5; }
   await step(0.25);
-  const W = costruisci(scene, { low: LOW });
+  const pmrem = new THREE.PMREMGenerator(renderer); const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; pmrem.dispose();
+  const W = costruisci(scene, { low: LOW, env: envTex });
   await step(0.75);
   const ST = { ...W.S0, appoggi: [...W.S0.appoggi] };
   let allineaT = 0, strutturaT = 0;
@@ -131,7 +143,7 @@ async function start() {
   // f: 's' = sale e scende con il livello; 'w' = fissa
   const RAC = {
     edificio: [[-250, 72, 205], [40, 10, 0], 'w'], quote: [[60, 18, 300], [40, 2, 0], 'w'],
-    soglia: [[SX - 84, Q + 1.7, 1.0], [SX + 40, Q + 15, 0], 's'], vie: [[SX + 36, Q + 26, 80], [SX + 14, Q - 12, 8], 's'],
+    soglia: [[SX - 84, Q + 1.7, 1.0], [SX + 40, Q + 15, 0], 's'], vie: [[SX + 40, Q + 18, 95], [SX - 2, Q / 2, 12], 's'],
     stanza: [[NC.x - 7, Q + 6, NC.z + 7], [NC.x + 3, Q + 4, NC.z - 3], 's'], anticamera: [[GX - 66, Q + 2.4, 3.5], [GX - 42, Q + 2.2, -1.2], 's'],
     corridoio: [[GX - 20, Q + 34, 84], [GX, Q + 12, -4], 's'], mezzanino: [[W.MZ.x - 8, W.MZ.y + 4, W.MZ.z + 14], [W.MZ.x, W.MZ.y, W.MZ.z], 's'],
     sotto: [[70, 36, 150], [40, -4, -30], 's'], fondamenta: [[10, FOND + 10, 140], [10, FOND + 2, 0], 'w'],
@@ -176,7 +188,7 @@ async function start() {
   let invitato = false;
   function select(k, { noFly = false, parla = true } = {}) {
     if (mode === 'attraversa') { const i = TOUR_KEYS.indexOf(k); if (i >= 0) { tourGo(i); return; } setMode('racconta'); }
-    mark(k); strutturaT = k === 'struttura' ? 1 : 0; RUM.visible = k === 'corridoio';
+    mark(k); strutturaT = k === 'struttura' ? 1 : 0; RUM.visible = k === 'corridoio'; allinea3T = 1;
     if (!noFly) flyTo(k);
     if (parla) { zitto(); say(`spazio-${k}`, testoSpazio(k)).then(() => { if (k === 'sotto' && !invitato && current === 'sotto') { invitato = true; say('appoggi-invito', RACCORDI.appoggiInvito); } }); }
   }
@@ -205,7 +217,7 @@ async function start() {
     ['soglia', [SX - 29, Q + 1.7, 0], [SX + 10, Q + 11, 0], 's', 0], ['soglia', [SX - 9, Q + 1.7, 0], [SX + 30, Q + 11, 0], 's', 1], ['soglia', [SX + 11, Q + 1.7, 0], [SX + 50, Q + 11, 0], 's', 2],
     ['vie', [SX + 34, Q + 1.7, 0.5], [GX - 52, Q + 3, 0], 's'], ['anticamera', [GX - 60, Q + 1.9, 0.2], [GX - 40, Q + 2.2, -1], 's'],
     ['stanza', [NC.x - 9, Q + 1.7, NC.z + 7], [NC.x + 4, Q + 12, NC.z - 4], 's'], ['mezzanino', [W.MZ.x - 2, W.MZ.y + 2, W.MZ.z], [NC.x - 8, Q + 8, NC.z - 6], 's'],
-    ['corridoio', [GX - 22, Q + 13, 30], [GX + 24, Q + 12, 22], 's'], ['vie', [SX + 28, Q + 1.7, 21.8], [SX - 30, 0, 21.8], 's'],
+    ['corridoio', [GX - 22, Q + 13, 30], [GX + 24, Q + 12, 22], 's'], ['vie', [SX + 31, Q + 1.7, W.SCALA.z], [SX - 30, 0, W.SCALA.z], 's'],
     ['sotto', [SX - 36, 1.8, 30], [60, 1, -10], 's'], ['fondamenta', [20, FOND + 5, 46], [20, FOND + 1, 0], 'w'],
   ];
   const TOUR_KEYS = TOUR.map((t) => t[0]);
@@ -232,7 +244,7 @@ async function start() {
   const qtag = $('qtag'), stepsEl = $('steps'), domEl = $('domanda');
   const pausa = (ms) => new Promise((r) => setTimeout(r, REDUCE ? ms / 3 : ms));
   function domanda(q, r) { if (!q) { domEl.classList.remove('on', 'risposta'); return; } $('dq').textContent = q; $('dr').textContent = r || ''; domEl.classList.add('on'); domEl.classList.toggle('risposta', !!r); }
-  const fessureT = [0, 0, 0], tremula = [false, false, false]; let segui = null, allinea3T = 0, drone = null;
+  const fessureT = [0, 0, 0], tremula = [false, false, false]; let segui = null, allinea3T = 1, drone = null;
   // un'inquadratura: stacco netto su p0/t0, poi un movimento lento fino a p1/t1
   function taglio(p0, t0, p1, t1, dur) { fly = { p0, t0, p1, t1, s: performance.now(), d: dur * 1000 }; camera.position.copy(p0); controls.target.copy(t0); }
   // la lama risponde alla risposta: sì accesa, no spenta, in parte tremula
@@ -248,7 +260,7 @@ async function start() {
     DOMANDE.forEach((d, i) => { const e = document.createElement('li'); const b = document.createElement('b'); b.textContent = d + ' '; e.append(b, v.risposte[i]); stepsEl.appendChild(e); li.push(e); });
     { const e = document.createElement('li'); const b = document.createElement('b'); b.textContent = DOVE_VA + ' '; e.append(b, v.doveVa); stepsEl.appendChild(e); li.push(e); }
     const X = W.SOGLIA_X, Lv = () => ST.liv, r = v.risposte;
-    mark('soglia'); VF.visible = false; VF.userData.set(false); tremula.fill(false); allinea3T = 0;
+    mark('soglia'); VF.visible = false; VF.userData.set(false); tremula.fill(false); allinea3T = 1;
     say(`voce-${String(v.n).padStart(2, '0')}`, v.voce);
     // una sola ripresa continua: la camera è la voce, attraversa le tre fessure a quota d'occhi
     const y0 = Q + 1.75;
@@ -260,7 +272,7 @@ async function start() {
         { u: passa(X[0] - 1), f: () => { domanda(DOMANDE[0], r[0]); fessureT[0] = 1; } },
         { u: passa(X[1] - 7), f: () => { li[1].classList.add('on'); domanda(DOMANDE[1], null); } },
         { u: passa(X[1] - 1), f: () => { domanda(DOMANDE[1], r[1]); lama(1, r[1]); } },
-        { u: passa(X[2] - 7), f: () => { li[2].classList.add('on'); domanda(DOMANDE[2], null); } },
+        { u: passa(X[2] - 7), f: () => { li[2].classList.add('on'); domanda(DOMANDE[2], null); allinea3T = 0; } },
         { u: passa(X[2] - 1.5), f: () => { domanda(DOMANDE[2], r[2]); allinea3T = /^sì/.test(r[2]) ? 1 : /^in parte/.test(r[2]) ? 0.5 : 0; lama(2, r[2]); } },
       ], i: 0, fine: null };
     await new Promise((res) => { drone.fine = res; }); if (id !== runId) return;
@@ -278,8 +290,8 @@ async function start() {
       anticamera: [P(N0.x - 4, Q, 0), neck(0.1)],
       corridoio: [P(N0.x - 4, Q, 0), P(N0.x + 4, Q, -6), ...[0.02, 0.1, 0.2, 0.3, 0.4, 0.5].map((t) => { const p = W.CORR.getPoint(t); return P(p.x, p.y, p.z); })],
       mezzanino: [P(N0.x - 4, Q, 0), neck(0.5), neck(0.95), P(NC.x - 4, Q, NC.z + 2), P(W.MZ.x, W.MZ.y + 0.3, W.MZ.z)],
-      sotto: [P(SX + 28, Q, 8), P(SX + 30, Q, 21.8), P(SX - 30, 0.3, 21.8), P(SX - 45, 0.6, 32), P(-10, 0.6, 30)],
-      fondamenta: [P(SX + 28, Q, 8), P(SX + 30, Q, 21.8), P(SX - 30, 0.3, 21.8), P(SX - 40, 0.3, 30), P(-10, FOND + 0.6, 40, 'w')],
+      sotto: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(SX - 30, 0.5, W.SCALA.z), P(SX - 40, 0.6, 30), P(-10, 0.6, 30)],
+      fondamenta: [P(SX + 31, Q, 8), P(SX + 31, Q, W.SCALA.z), P(SX - 30, 0.5, W.SCALA.z), P(SX - 40, 0.5, 30), P(-10, FOND + 0.6, 40, 'w')],
       struttura: [P(SX + 30, Q, 0)],
     }[s];
     if (s === 'struttura') { strutturaT = 1; flyTo('struttura', 5); await say('voce-struttura', RACCORDI.voceStruttura); }
@@ -315,7 +327,7 @@ async function start() {
     const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false); composer.setSize(w, h);
     const aperto = !panel.classList.contains('closed') && w > 700;
     if (aperto) { const d = 390; camera.aspect = (w + d) / h; camera.setViewOffset(w + d, h, 0, 0, w, h); } else { camera.aspect = w / h; camera.clearViewOffset(); }
-    camera.updateProjectionMatrix();
+    camera.updateProjectionMatrix(); W.motoU.uPR.value = renderer.getPixelRatio() * h / 900;
   }
   window.addEventListener('resize', resize); resize();
   const r0 = RAC.edificio; camera.position.set(...r0[0]); controls.target.set(...r0[1]);
@@ -381,7 +393,9 @@ async function start() {
     if (qPos) { tmpC.copy(qPos.v); tmpC.y += off(qPos.f); tmpC.project(camera); qtag.style.left = ((tmpC.x + 1) / 2) * w + 'px'; qtag.style.top = ((1 - tmpC.y) / 2) * h + 'px'; }
     else if (qtag.classList.contains('on')) { tmpC.copy(VF.position); tmpC.y += 3; tmpC.project(camera); qtag.style.left = ((tmpC.x + 1) / 2) * w + 'px'; qtag.style.top = ((1 - tmpC.y) / 2) * h + 'px'; }
     // qualità adattiva
-    if (frame % 120 === 0 && dt > 1 / 40 && PR > 0.7) { PR = Math.max(0.7, PR - 0.15); renderer.setPixelRatio(PR); resize(); }
+    if (frame % 120 === 0) { // qualità adattiva: scende se serve, risale quando torna fluido; mai sotto 1
+      if (dt > 1 / 35 && PR > PRMIN) { PR = Math.max(PRMIN, PR - 0.15); renderer.setPixelRatio(PR); resize(); }
+      else if (dt < 1 / 55 && PR < PRMAX) { PR = Math.min(PRMAX, PR + 0.15); renderer.setPixelRatio(PR); resize(); } }
   }
   await step(0.95);
   renderer.compile(scene, camera);

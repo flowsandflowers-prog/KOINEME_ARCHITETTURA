@@ -10,6 +10,9 @@ Stato: prima versione navigabile del modello (`index.html`, `main.js`, `mondo.js
 | `index.html`, `main.js`, `mondo.js` | Il modello: due modi (Racconta, Attraversa), gli spazi con i testi, le tredici voci dello Smistamento, il piano di sotto con quota, ampiezza, valenza, attivazione e i quattro appoggi. |
 | `../public/soglia/voce/` | Le registrazioni della voce narrante: un file per pezzo del copione, e il suo nome in `elenco.json`. Finché un file manca, legge la voce sintetica. |
 | `../public/soglia/modelli/xbot.glb` | Il personaggio animato: «X Bot» di Mixamo, preso dagli esempi ufficiali di three.js (r171), con le animazioni di camminata e di attesa. |
+| `../public/soglia/modelli/volpe.glb` | Proposta per il compagno: «Fox» dei glTF Sample Assets di Khronos, CC-BY 4.0: modello di PixelMannen, rig e animazioni di @tomkranis, conversione di @AsoboStudio e @scurest. |
+| `../public/soglia/modelli/cicogna.glb`, `pappagallo.glb` | Proposte per il compagno: «Stork» e «Parrot» dagli esempi di three.js (r171), animali animati di mirada.com per ro.me. |
+| `studio/daemon.html` | Le cinque proposte per sostituire il manichino: volpe, cicogna, mutaforma, sciame, filo. |
 | `studio/` | Gli studi visivi e le immagini in `studio/immagini/`. |
 
 Comandi:

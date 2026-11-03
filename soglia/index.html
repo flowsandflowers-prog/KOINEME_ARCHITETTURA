@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>KOINEME</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,9 +22,9 @@
   --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   color-scheme:dark;
 }
-html,body{height:100%;margin:0;background:var(--night);color:var(--ink);font-family:var(--body);overflow:hidden}
+html,body{height:100%;margin:0;touch-action:none;overscroll-behavior:none;background:var(--night);color:var(--ink);font-family:var(--body);overflow:hidden}
 #scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
-.panel{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:calc(14px + env(safe-area-inset-left,0px));width:360px;max-height:calc(100% - 28px);overflow-y:auto;background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px;transition:transform .5s cubic-bezier(.7,0,.2,1),opacity .5s;scrollbar-width:thin}
+.panel{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:calc(14px + env(safe-area-inset-left,0px));width:360px;max-height:calc(100% - 28px);overflow-y:auto;background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px;transition:transform .5s cubic-bezier(.7,0,.2,1),opacity .5s;scrollbar-width:thin;touch-action:pan-y}
 .panel.closed{transform:translateX(calc(-100% - 30px));opacity:0;pointer-events:none}
 .toggle{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:calc(14px + env(safe-area-inset-left,0px));z-index:5;font:600 12px var(--body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer;display:none}
 .toggle.on{display:block}
