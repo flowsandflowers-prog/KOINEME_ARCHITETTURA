@@ -238,7 +238,7 @@ async function start() {
   const P = (x, y, z, f = 's') => ({ v: V(x, y, z), f });
   function cammina(punti, vel = 3.2) { return new Promise((res) => { cammino = { punti, i: 0, vel, res }; }); }
   function mostra(html, p) { qtag.innerHTML = html; qPos = p; qtag.classList.add('on'); }
-  /* ---------- lo Smistamento: storyboard della Soglia (circa 11 secondi), poi «dove va» ----------
+  /* ---------- lo Smistamento: storyboard della Soglia (circa 20 secondi), poi «dove va» ----------
      1 la camera scende veloce dall'alto · 2 primo piano: il daemon muta · 3 da dietro: corre ed entra nella prima fessura,
      si fa polvere · 4 controcampo dall'interno della prima fessura · 5 carrello all'indietro veloce: la polvere si ricompone
      · 6 la camera gira e si mette dietro: seconda fessura · 7 dall'alto a tre quarti: muta di nuovo e avanza verso la terza
@@ -262,23 +262,24 @@ async function start() {
     M.prendi(); M.metti(xS, y, 0, Math.PI / 2); M.anima('sta');
     say(`voce-${String(v.n).padStart(2, '0')}`, v.voce);
     const P = M.pos, dx = (a, b, u) => M.metti(lerp(a, b, u), y, 0, Math.PI / 2);
+    const K = 1.87; // il ritmo: circa 20 secondi in tutto
     await gira([
-      { d: 1.2, f: (u) => { const e = eo(u); inquadra(lerp(xS - 8, xS - 7, e), lerp(y + 110, y + 4, e), lerp(24, 8, e), xS, y + 1.5, 0); } },
-      { d: 1.2, on: () => M.muta(giro[0], 0.9), f: (u) => inquadra(lerp(xS + 5, xS + 4, u), y + 2.3, lerp(4.5, 3.6, u), xS, y + 1.6, 0) },
-      { d: 1.5, on: () => { M.anima('corre'); li[0].classList.add('on'); domanda(DOMANDE[0], null); },
-        f: (u) => { dx(xS, X[0] - 5, ei(u)); if (u > 0.5 && M.forma !== 'polvere' && !M._p) { M._p = 1; M.schiaccia(0.35); M.muta('polvere', 0.5); } if (u > 0.8) { domanda(DOMANDE[0], r[0]); fessureT[0] = 1; } inquadra(P.x - 9, y + 3.2, 1.2, P.x + 4, y + 1.6, 0); } },
-      { d: 1.0, f: (u) => { dx(X[0] - 5, X[0] + 5, u); M.schiaccia(Math.abs(P.x - X[0]) < 1.6 ? 0.35 : 1); inquadra(X[0] + 1.2, y + 1.8, 0, X[0] - 10, y + 1.4, 0); } },
-      { d: 1.2, on: () => { M._p = 0; M.schiaccia(1); M.muta(giro[1], 0.8); }, f: (u) => { const e = eo(u); inquadra(lerp(X[0] + 9, X[0] + 18, e), lerp(y + 2, y + 3.2, e), lerp(1.5, 3.5, e), P.x, y + 1.5, 0); } },
-      { d: 1.5, on: () => { M.anima('corre'); li[1].classList.add('on'); domanda(DOMANDE[1], null); },
-        f: (u) => { dx(X[0] + 5, X[1] - 1.5, ei(u)); if (u > 0.55 && !M._p) { M._p = 1; M.schiaccia(0.35); M.muta('polvere', 0.45); } if (u > 0.8) { domanda(DOMANDE[1], r[1]); lama(1, r[1]); }
+      { d: 1.2 * K, f: (u) => { const e = eo(u); inquadra(lerp(xS - 8, xS - 7, e), lerp(y + 110, y + 4, e), lerp(24, 8, e), xS, y + 1.5, 0); } },
+      { d: 1.2 * K, on: () => M.muta(giro[0], 0.9 * K), f: (u) => inquadra(lerp(xS + 5, xS + 4, u), y + 2.3, lerp(4.5, 3.6, u), xS, y + 1.6, 0) },
+      { d: 1.5 * K, on: () => { M.anima('corre'); li[0].classList.add('on'); domanda(DOMANDE[0], null); },
+        f: (u) => { dx(xS, X[0] - 5, ei(u)); if (u > 0.5 && M.forma !== 'polvere' && !M._p) { M._p = 1; M.schiaccia(0.35); M.muta('polvere', 0.5 * K); } if (u > 0.8) { domanda(DOMANDE[0], r[0]); fessureT[0] = 1; } inquadra(P.x - 9, y + 3.2, 1.2, P.x + 4, y + 1.6, 0); } },
+      { d: 1.0 * K, f: (u) => { dx(X[0] - 5, X[0] + 5, u); M.schiaccia(Math.abs(P.x - X[0]) < 1.6 ? 0.35 : 1); inquadra(X[0] + 1.2, y + 1.8, 0, X[0] - 10, y + 1.4, 0); } },
+      { d: 1.2 * K, on: () => { M._p = 0; M.schiaccia(1); M.muta(giro[1], 0.8 * K); }, f: (u) => { const e = eo(u); inquadra(lerp(X[0] + 9, X[0] + 18, e), lerp(y + 2, y + 3.2, e), lerp(1.5, 3.5, e), P.x, y + 1.5, 0); } },
+      { d: 1.5 * K, on: () => { M.anima('corre'); li[1].classList.add('on'); domanda(DOMANDE[1], null); },
+        f: (u) => { dx(X[0] + 5, X[1] - 1.5, ei(u)); if (u > 0.55 && !M._p) { M._p = 1; M.schiaccia(0.35); M.muta('polvere', 0.45 * K); } if (u > 0.8) { domanda(DOMANDE[1], r[1]); lama(1, r[1]); }
           const a = Math.min(1, u / 0.6) * Math.PI; inquadra(P.x + 8 * Math.cos(a), y + 2.6, 6 * Math.sin(a) + 0.8, P.x, y + 1.5, 0); } },
-      { d: 1.5, on: () => { li[2].classList.add('on'); domanda(DOMANDE[2], null); allinea3T = 0; },
+      { d: 1.5 * K, on: () => { li[2].classList.add('on'); domanda(DOMANDE[2], null); allinea3T = 0; },
         f: (u) => { if (u < 0.3) { dx(X[1] - 1.5, X[1] + 3, u / 0.3); M.schiaccia(Math.abs(P.x - X[1]) < 1.6 ? 0.35 : 1); }
-          else { if (M._p) { M._p = 0; M.schiaccia(1); M.muta(giro[2], 0.6).then(() => M.anima('corre')); } dx(X[1] + 3, X[2] - 1.5, ei((u - 0.3) / 0.7)); }
+          else { if (M._p) { M._p = 0; M.schiaccia(1); M.muta(giro[2], 0.6 * K).then(() => M.anima('corre')); } dx(X[1] + 3, X[2] - 1.5, ei((u - 0.3) / 0.7)); }
           inquadra(lerp(X[1] - 6, X[1] - 2, u), y + 40, lerp(28, 25, u), X[1] + 10, y + 1, 0); } },
-      { d: 1.6, on: () => { M.schiaccia(0.35); M.muta('polvere', 0.35); },
+      { d: 1.6 * K, on: () => { M.schiaccia(0.35); M.muta('polvere', 0.35 * K); },
         f: (u) => { dx(X[2] - 1.5, X[2] + 2.5, Math.min(1, u / 0.5)); if (u > 0.4 && !M._r) { M._r = 1; domanda(DOMANDE[2], r[2]); allinea3T = /^sì/.test(r[2]) ? 1 : /^in parte/.test(r[2]) ? 0.5 : 0; lama(2, r[2]); }
-          if (u > 0.5 && !M._d) { M._d = 1; M.schiaccia(1); if (D !== 'polvere') M.muta(D, 0.8).then(() => M.anima('sta')); }
+          if (u > 0.5 && !M._d) { M._d = 1; M.schiaccia(1); if (D !== 'polvere') M.muta(D, 0.8 * K).then(() => M.anima('sta')); }
           inquadra(lerp(X[2] + 13, X[2] + 11, u), y + 2.2, 0.4, X[2] + 1, y + 1.6, 0); } },
     ]);
     M._r = M._d = M._p = 0;
