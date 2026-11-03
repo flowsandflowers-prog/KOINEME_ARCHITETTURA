@@ -21,6 +21,7 @@ export default defineConfig({
         sogliaMatrice3: resolve(import.meta.dirname, 'soglia/studio/matrice3.html'),
         sogliaMatrice4: resolve(import.meta.dirname, 'soglia/studio/matrice4.html'),
         sogliaDaemon: resolve(import.meta.dirname, 'soglia/studio/daemon.html'),
+        sogliaAnimali: resolve(import.meta.dirname, 'soglia/studio/animali.html'),
       },
       // three.js in un file a sé: resta in cache tra una pagina e l'altra
       output: { manualChunks: (id) => (id.includes('node_modules/three') ? 'three' : undefined) },

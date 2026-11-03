@@ -12,6 +12,8 @@ Stato: prima versione navigabile del modello (`index.html`, `main.js`, `mondo.js
 | `../public/soglia/modelli/xbot.glb` | Il personaggio animato: «X Bot» di Mixamo, preso dagli esempi ufficiali di three.js (r171), con le animazioni di camminata e di attesa. |
 | `../public/soglia/modelli/volpe.glb` | Proposta per il compagno: «Fox» dei glTF Sample Assets di Khronos, CC-BY 4.0: modello di PixelMannen, rig e animazioni di @tomkranis, conversione di @AsoboStudio e @scurest. |
 | `../public/soglia/modelli/cicogna.glb`, `pappagallo.glb` | Proposte per il compagno: «Stork» e «Parrot» dagli esempi di three.js (r171), animali animati di mirada.com per ro.me. |
+| `../public/soglia/modelli/animali/` | Varianti per il mutaforma: lupo, cane, cervo, cerva, cavallo, toro, alpaca dal pacchetto «Ultimate Animated Animals» di Quaternius (CC0, tramite il progetto danwahl/animasim), alleggeriti; il fenicottero dagli esempi di three.js (r171). |
+| `studio/animali.html` | Gli animali disponibili per il mutaforma, uno per riquadro. |
 | `studio/daemon.html` | Le cinque proposte per sostituire il manichino: volpe, cicogna, mutaforma, sciame, filo. |
 | `studio/` | Gli studi visivi e le immagini in `studio/immagini/`. |
 

@@ -10,7 +10,7 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 export const Q = 40, FOND = -34, TAGLIO = 54, SX = -20, GX = 130;
 export const NC = V(GX, Q + 24, -4); // centro della camera centrale (la stanza)
 
-export function costruisci(scene, { low = false, env = null } = {}) {
+export function costruisci(scene, { low = false, env = null, corridoio = 'nastro' } = {}) {
   let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   const cut = [new THREE.Plane(V(0, 0, -1), TAGLIO)];
   const SOPRA = new THREE.Group(); scene.add(SOPRA);   // tutto quello che sale e scende con il livello
@@ -211,18 +211,65 @@ export function costruisci(scene, { low = false, env = null } = {}) {
   add(new THREE.Mesh(new THREE.CylinderGeometry(16, 16, 0.6, 48), M.basalt), SOPRA, NC.x, Q - 0.3, NC.z);
   const anelli = [0, 1, 2, 3].map((i) => { const m = add(new THREE.Mesh(new THREE.TorusGeometry(3 + i * 3, 0.14, 6, 96), new THREE.MeshBasicMaterial({ color: 0xffd6a8, transparent: true, opacity: 0.6 })), SOPRA, NC.x, Q + 0.05, NC.z); m.rotation.x = Math.PI / 2; return m; });
   // le otto camere chiuse: i gusci
-  const membrane = PODS.map(({ base, q }) => { const m = shade(add(new THREE.Mesh(podG, M.membrana), SOPRA, base.x, base.y, base.z)); m.quaternion.copy(q); return m; });
+  // ognuna diversa: il colore della ruota di Plutchik, smorzato verso la materia del nido (gioia, fiducia, paura, sorpresa, tristezza, disgusto, rabbia, anticipazione)
+  const TINTE = [0xe8c547, 0x9cc35a, 0x3f8a5c, 0x52a9c9, 0x3c5fa0, 0x8a62a3, 0xb8402f, 0xd9823a], nido = new THREE.Color(0x9b8b74);
+  const podMats = TINTE.map((c) => new THREE.MeshStandardMaterial({ color: new THREE.Color(c).lerp(nido, 0.3), roughness: 0.5, transparent: true, opacity: 1 }));
+  const membrane = PODS.map(({ base, q }, k) => { const m = shade(add(new THREE.Mesh(podG, podMats[k]), SOPRA, base.x, base.y, base.z)); m.quaternion.copy(q); return m; });
   // i quattro assi: fibre tese, chiare, fra le opposte
   for (let k = 0; k < 4; k++) { const a = OTTO[k], b = OTTO[k + 4], len = a.distanceTo(b) + 14, mid = a.clone().add(b).multiplyScalar(0.5); const m = add(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, len, 6), M.asse), SOPRA, mid.x, mid.y, mid.z); m.quaternion.setFromUnitVectors(V(0, 1, 0), b.clone().sub(a).normalize()); }
-  // il corridoio: una galleria esterna che gira intorno a tutte le camere
-  const CORR = new THREE.CatmullRomCurve3([...Array(65)].map((_, i) => { const a = -Math.PI * 0.85 + (i / 64) * Math.PI * 2.1; return V(NC.x + Math.cos(a) * 47, Q + 3 + 14 * Math.sin((i / 64) * Math.PI) + 2 * Math.sin(a * 3), NC.z + Math.sin(a) * 45); }));
-  { const pos = [], idx = [], p = V(0, 0, 0), t = V(0, 0, 0), s = V(0, 0, 0), up = V(0, 1, 0);
+  // il corridoio. Due versioni a confronto: ?corridoio=anello (la galleria intorno al nido) e, di base, il nastro di Möbius:
+  // un anello verticale, inclinato, che tocca il passaggio in quota prima dell'anticamera. Chi ci sale lo percorre
+  // all'infinito: dopo un giro passa dallo stesso punto capovolto, sotto il passaggio; dopo due torna dov'era.
+  const MOB = { P0: V(56, Q, 0), R: 13, d: V(Math.cos(0.52), 0, -Math.sin(0.52)), b: V(0, 0, 0), c: V(0, 0, 0) };
+  MOB.b.crossVectors(MOB.d, V(0, 1, 0)).normalize(); MOB.c.copy(MOB.P0).add(V(0, MOB.R, 0));
+  const _nr = V(0, 0, 0), _w = V(0, 0, 0), _tg = V(0, 0, 0);
+  // punto del nastro: th = angolo lungo l'anello (0 = sul passaggio), v = di quanto ci si sposta di traverso
+  function mobius(th, v, out, nrm) {
+    _nr.copy(MOB.d).multiplyScalar(Math.sin(th)).addScaledVector(V0Y, -Math.cos(th));
+    _w.copy(MOB.b).multiplyScalar(Math.cos(th / 2)).addScaledVector(_nr, Math.sin(th / 2));
+    out.copy(MOB.c).addScaledVector(_nr, MOB.R).addScaledVector(_w, v);
+    if (nrm) { _tg.copy(MOB.d).multiplyScalar(Math.cos(th)).addScaledVector(V0Y, Math.sin(th)); nrm.crossVectors(_w, _tg).normalize(); }
+    return out;
+  }
+  const V0Y = V(0, 1, 0);
+  let CORR;
+  if (corridoio === 'anello') {
+    CORR = new THREE.CatmullRomCurve3([...Array(65)].map((_, i) => { const a = -Math.PI * 0.85 + (i / 64) * Math.PI * 2.1; return V(NC.x + Math.cos(a) * 47, Q + 3 + 14 * Math.sin((i / 64) * Math.PI) + 2 * Math.sin(a * 3), NC.z + Math.sin(a) * 45); }));
+    const pos = [], idx = [], p = V(0, 0, 0), t = V(0, 0, 0), s = V(0, 0, 0), up = V(0, 1, 0);
     for (let i = 0; i <= 200; i++) { CORR.getPoint(i / 200, p); CORR.getTangent(i / 200, t); s.crossVectors(t, up).normalize().multiplyScalar(1.4); pos.push(p.x - s.x, p.y, p.z - s.z, p.x + s.x, p.y, p.z + s.z); if (i < 200) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } }
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); shade(add(new THREE.Mesh(g, M.corr), SOPRA)); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); shade(add(new THREE.Mesh(g, M.corr), SOPRA));
+  } else {
+    // il nastro: largo come il passaggio, con un bordo appena rilevato perché si legga la torsione
+    const N = 320, VS = [-1.5, -1.35, 1.35, 1.5], LIFT = [0.25, 0, 0, 0.25], pos = [], idx = [], p = V(0, 0, 0), n = V(0, 0, 0);
+    for (let i = 0; i <= N; i++) { const th = (i / N) * Math.PI * 2; for (let j = 0; j < 4; j++) { mobius(th, VS[j], p, n); p.addScaledVector(n, LIFT[j]); pos.push(p.x, p.y, p.z); } if (i < N) for (let j = 0; j < 3; j++) { const a = i * 4 + j, b = a + 4; idx.push(a, b, a + 1, a + 1, b, b + 1); } }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+    shade(add(new THREE.Mesh(g, M.corr), SOPRA));
+    CORR = new THREE.CatmullRomCurve3([...Array(49)].map((_, i) => mobius((i / 48) * Math.PI * 2, 0, V(0, 0, 0))), true);
+  }
   box(12, 0.8, 2.6, M.basalt, SOPRA, NECK0.x - 4, Q - 0.4, -9);
-  // il mezzanino: un ballatoio appeso alle nervature, a mezza quota dentro il nido
-  const MZ = V(NC.x + 8, Q + 16, NC.z + 6);
-  box(9, 0.6, 6, M.basalt, SOPRA, MZ.x, MZ.y, MZ.z);
+  // il mezzanino: una canna esile che sale dalle fondamenta, attraversa il nido, esce oltre la sommità e si piega
+  // all'ingiù come una canna da pesca. Dalla punta pende una fune: ci si appende. La brezza la fa ondeggiare
+  const ROD = { x: NC.x + 12, z: NC.z + 6, y: Q + 44 };
+  const dirO = V(0.6, 0, 0.8);
+  const rodM = new THREE.MeshStandardMaterial({ color: 0xc4b9a6, roughness: 0.6 });
+  const rodLow = shade(add(new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.42, 1, 12).translate(0, -0.5, 0), rodM), SOPRA, ROD.x, ROD.y, ROD.z));
+  // due snodi: alla sommità del nido e a metà dell'arco; la punta si piega di più
+  const piv1 = add(new THREE.Group(), SOPRA, ROD.x, ROD.y, ROD.z);
+  const P1 = [V(0, 0, 0), V(0, 10, 0), V(0, 18, 0), V(dirO.x * 4, 23, dirO.z * 4), V(dirO.x * 10, 25.5, dirO.z * 10)];
+  const M1 = P1[P1.length - 1];
+  const tubo = (pts, r) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, r, 8, false);
+  shade(add(new THREE.Mesh(tubo(P1, 0.3), rodM), piv1));
+  const piv2 = add(new THREE.Group(), piv1, M1.x, M1.y, M1.z);
+  const P2 = [V(0, 0, 0), V(dirO.x * 7, 0.6, dirO.z * 7), V(dirO.x * 14, -2.5, dirO.z * 14), V(dirO.x * 19, -9, dirO.z * 19), V(dirO.x * 21, -17, dirO.z * 21)];
+  shade(add(new THREE.Mesh(tubo(P2, 0.18), rodM), piv2));
+  const TIP = P2[P2.length - 1], ROPE = 8;
+  const corda = add(new THREE.Group(), piv2, TIP.x, TIP.y, TIP.z);
+  add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, ROPE, 6).translate(0, -ROPE / 2, 0), new THREE.MeshStandardMaterial({ color: 0x2a2520, roughness: 0.9 })), corda);
+  add(new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.07, 8, 24), new THREE.MeshStandardMaterial({ color: 0x2a2520, roughness: 0.9 })), corda, 0, -ROPE - 0.4, 0);
+  const MZ = V(ROD.x + M1.x + TIP.x, ROD.y + M1.y + TIP.y - ROPE, ROD.z + M1.z + TIP.z);
+  const axO = V(0, 0, 0).crossVectors(V0Y, dirO).normalize(); // asse di flessione: perpendicolare alla direzione della punta
+  const qa = new THREE.Quaternion(), qb = new THREE.Quaternion(), qw = new THREE.Quaternion(), axL = V(0, 0, 0);
+  let pend = 0, pendV = 0;
   // la struttura: la pianta disegnata, in trasparenza (si accende quando la si chiama)
   const pianta = new THREE.Group(); SOPRA.add(pianta);
   { const lm = new THREE.LineBasicMaterial({ color: 0xf2e6cf, transparent: true, opacity: 0 }); const circ = (cx, cz, rx, rz) => { const pts = []; for (let i = 0; i <= 96; i++) { const a = (i / 96) * Math.PI * 2; pts.push(V(cx + Math.cos(a) * rx, 0, cz + Math.sin(a) * rz)); } pianta.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lm)); };
@@ -244,10 +291,11 @@ export function costruisci(scene, { low = false, env = null } = {}) {
   proxy(new THREE.BoxGeometry(600, 2, 300), SOTTO, 0, 0, -100, 'sotto');
   proxy(new THREE.BoxGeometry(600, 10, 300), scene, 0, FOND - 2, -100, 'fondamenta');
   for (const k of [0, 16, 32, 48]) { const p = CORR.getPoint(0.15 + k / 64 * 0.7); proxy(new THREE.SphereGeometry(4, 8, 6), SOPRA, p.x, p.y, p.z, 'corridoio'); }
+  for (const y of [0.3, 0.6]) proxy(new THREE.CylinderGeometry(2.2, 2.2, 8, 8), SOPRA, ROD.x, Q + 30 + y * 20, ROD.z, 'mezzanino');
 
   const ANCORE = {
     soglia: [SOPRA, V(SX, Q + 33, 0)], stanza: [SOPRA, V(NC.x, NC.y + 34, NC.z)], anticamera: [SOPRA, V(GX - 40, Q + 9, 0)],
-    corridoio: [SOPRA, CORR.getPoint(0.55).add(V(0, 4, 0))], mezzanino: [SOPRA, V(MZ.x + 12, MZ.y + 2, MZ.z + 10)], vie: [SOPRA, V(SX + 6, Q / 2 + 8, 22)],
+    corridoio: [SOPRA, CORR.getPoint(0.5).add(V(0, 4, 0))], mezzanino: [SOPRA, V(MZ.x + 12, MZ.y + 2, MZ.z + 10)], vie: [SOPRA, V(SX + 6, Q / 2 + 8, 22)],
     sotto: [SOTTO, V(40, 3, 40)], fondamenta: [scene, V(70, FOND + 6, 45)], struttura: [SOPRA, V(NC.x - 50, Q + 2, NC.z + 36)],
   };
   const CHIUSE = OTTO.map((c) => [SOPRA, c.clone().add(V(0, -8, 0))]);
@@ -280,6 +328,15 @@ export function costruisci(scene, { low = false, env = null } = {}) {
       }
       filmG.attributes.position.needsUpdate = true; filmG.computeVertexNormals();
     }
+    // la canna del mezzanino: dalle fondamenta (ferme) fino al nido (che sale e scende); la brezza cresce e cala
+    rodLow.scale.y = Math.max(1, ROD.y + liv - FOND);
+    const brezza = (0.25 + 0.75 * st.attivazione) * (0.55 + 0.45 * Math.sin(t * 0.13)) * (1 + 0.25 * Math.sin(t * 1.7));
+    const f = Math.sin(t * 0.85) + 0.35 * Math.sin(t * 2.1 + 1);
+    piv1.rotation.set(0, 0, 0); piv1.quaternion.setFromAxisAngle(axO, 0.035 * brezza * f);
+    qb.setFromAxisAngle(axO, 0.12 * brezza * Math.sin(t * 0.85 - 0.7)); qa.setFromAxisAngle(dirO, 0.06 * brezza * Math.sin(t * 0.6)); piv2.quaternion.multiplyQuaternions(qa, qb);
+    // la fune: un pendolo che insegue la punta, sempre verso il basso
+    pendV += (-(pend - 0.25 * brezza * f) * 2.2 - pendV * 0.6) * dt; pend += pendV * dt;
+    piv2.getWorldQuaternion(qw).invert(); axL.copy(axO); corda.quaternion.copy(qw).multiply(qa.setFromAxisAngle(axL, pend));
     // le fondamenta cedono sotto la riserva: le porte di sopra smettono di chiudere
     const riserva = liv < -9 ? 1 : 0; porte += (riserva - porte) * Math.min(1, dt * 1.5);
     FONDA.position.y = -1.2 * porte;
@@ -296,9 +353,9 @@ export function costruisci(scene, { low = false, env = null } = {}) {
     core.material.emissiveIntensity = 1.3 + 0.25 * Math.sin(t * 0.9) + 0.6 * st.allinea;
     for (let i = 0; i < 4; i++) anelli[i].material.opacity = 0.35 + 0.25 * Math.sin(t * 0.8 - i * 0.8);
     // la struttura: la pelle si fa trasparente, compare la pianta
-    M.fibre.opacity = 1 - 0.85 * st.struttura; M.fibre.depthWrite = st.struttura < 0.5; M.membrana.opacity = 1 - 0.85 * st.struttura; M.membrana.depthWrite = st.struttura < 0.5; pianta.userData.mat.opacity = st.struttura;
+    M.fibre.opacity = 1 - 0.85 * st.struttura; M.fibre.depthWrite = st.struttura < 0.5; for (const pm of podMats) { pm.opacity = 1 - 0.85 * st.struttura; pm.depthWrite = st.struttura < 0.5; } pianta.userData.mat.opacity = st.struttura;
     for (let i = 0; i < lame.length; i++) lame[i].material.opacity = Math.min(1, (i % 2 ? 0.4 : 0.32) * (0.85 + 0.15 * Math.sin(t * 0.6 + i)) * (1 + 1.8 * st.fessure[i >> 1]));
   }
 
-  return { motoU, SOPRA, SOTTO, aggiorna, S0, objectsToIntersect, ANCORE, CHIUSE, APPOGGI, CORPO, NECK, CORR, SOGLIA_X, NECK0, MZ, alberi, SCALA };
+  return { motoU, mobius, MOBIUS: corridoio !== 'anello', SOPRA, SOTTO, aggiorna, S0, objectsToIntersect, ANCORE, CHIUSE, APPOGGI, CORPO, NECK, CORR, SOGLIA_X, NECK0, MZ, alberi, SCALA };
 }
