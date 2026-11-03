@@ -8,6 +8,9 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // quote di riferimento (il livello del piano di sotto è 0 quando la quota è a metà)
 export const Q = 40, FOND = -34, TAGLIO = 54, SX = -20, GX = 130;
+// il pavimento del piano di sotto, a quota e appoggi medi: a due terzi del parallelepipedo (fra le fondamenta e il passaggio).
+// L'edificio di sopra resta fermo: quando la quota scende o si toglie un appoggio, è il pavimento che si allontana
+export const PIANO = 15;
 export const NC = V(GX, Q + 24, -4); // centro della camera centrale (la stanza)
 
 export function costruisci(scene, { low = false, env = null, corridoio = 'nastro' } = {}) {
@@ -41,19 +44,21 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   const shade = (m) => { m.castShadow = m.receiveShadow = true; return m; };
   const box = (w, h, d, mat, parent, x, y, z) => shade(add(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat), parent, x, y, z));
 
-  /* ---------- le fondamenta: il corpo ---------- */
+  // il serbatoio e le fondamenta: lo stesso rettangolo in pianta, centrato sull'asse del passaggio fra la Soglia e il nido
+  const BC = V(55, 0, 0), BX = 170, BZ = 60; // centro e mezze misure a ampiezza media (l'ampiezza le scala da 0.75 a 1.25)
+  /* ---------- le fondamenta: il corpo, grandi quanto il pavimento ---------- */
   const FONDA = new THREE.Group(); scene.add(FONDA);
-  shade(add(new THREE.Mesh(new THREE.BoxGeometry(3000, 16, 3000), new THREE.MeshStandardMaterial({ color: 0x9c9384, roughness: 0.9, clippingPlanes: cut })), FONDA, 0, FOND - 8, 0));
-  box(3000, 16, 1, new THREE.MeshStandardMaterial({ color: 0x857c6f, roughness: 0.95 }), FONDA, 0, FOND - 8, TAGLIO);
+  const fondaBox = shade(add(new THREE.Mesh(new THREE.BoxGeometry(1, 16, 1), [0, 1, 2, 3, 4, 5].map((i) => new THREE.MeshStandardMaterial({ color: i === 4 ? 0x857c6f : 0x9c9384, roughness: 0.9 }))), FONDA, BC.x, FOND - 8, 0));
   add(new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshStandardMaterial({ color: 0x2e2c29, roughness: 1 })), scene, 0, FOND - 16, 0).rotation.x = -Math.PI / 2;
   const OSSA = []; // posizioni per le parole del corpo
   {
-    const n = low ? 120 : 220, im = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 18, 12), M.bone, n), o = new THREE.Object3D();
+    const n = low ? 70 : 110, im = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 18, 12), M.bone, n), o = new THREE.Object3D();
     for (let i = 0; i < n; i++) {
-      const s = 3 + rnd() * 10, sx = s * (1 + rnd() * 1.4); o.scale.set(sx, s * 0.5, s); o.rotation.y = rnd() * 3;
-      // intere: il punto più vicino al taglio resta almeno 1.5 m dietro
-      const zMax = TAGLIO - 1.5 - Math.max(sx, s); o.position.set(-260 + rnd() * 560, FOND + 0.4, -220 + rnd() * (zMax + 220));
-      o.updateMatrix(); im.setMatrixAt(i, o.matrix); if (OSSA.length < 7 && o.position.z > 14 && o.position.x > -120 && o.position.x < 200) OSSA.push(o.position.clone().setY(FOND + 4)); }
+      const s = 2.5 + rnd() * 6, sx = s * (1 + rnd() * 1.2); o.scale.set(sx, s * 0.5, s); o.rotation.y = rnd() * 3;
+      // intere e dentro le fondamenta anche all'ampiezza minima: il punto più vicino al taglio resta almeno 1.5 m dietro
+      const r = Math.max(sx, s), hx = BX * 0.75 - r, z0 = -BZ * 0.75 + r, zMax = Math.min(TAGLIO, BZ * 0.75) - 1.5 - r;
+      o.position.set(BC.x - hx + rnd() * 2 * hx, FOND + 0.4, z0 + rnd() * (zMax - z0));
+      o.updateMatrix(); im.setMatrixAt(i, o.matrix); if (OSSA.length < 7 && o.position.z > 10) OSSA.push(o.position.clone().setY(FOND + 4)); }
     shade(im); im.computeBoundingSphere(); FONDA.add(im);
   }
 
@@ -63,7 +68,6 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   const WY = -7;
   const waterMat = new THREE.MeshStandardMaterial({ color: 0x4f6266, roughness: 0.1, metalness: 0.3, normalMap: ripple, normalScale: new THREE.Vector2(0.35, 0.35), transparent: true, opacity: 0.9, clippingPlanes: cut, depthWrite: false });
   // il serbatoio: un rettangolo in pianta centrato sull'asse del passaggio, fra la Soglia e il nido. L'ampiezza lo allarga
-  const BC = V(55, 0, 0), BX = 170, BZ = 60; // centro e mezze misure a ampiezza media
   const surf = add(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), waterMat), SOTTO, BC.x, WY, BC.z); surf.rotation.x = -Math.PI / 2; surf.renderOrder = 2;
   // il corpo d'acqua sul taglio: scurisce in profondità. Altezza 1, scalata a ogni fotogramma fino alle fondamenta
   const faceG = new THREE.PlaneGeometry(1, 1, 1, 16); faceG.translate(0, -0.5, 0);
@@ -145,7 +149,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   box(NECK0.x - (SX + 36), 1.0, 3.0, M.basalt, SOPRA, (SX + 36 + NECK0.x) / 2, Q - 0.5, 0);
   // l'unica scala: dritta, un pieno svuotato. La fascia davanti al parallelepipedo è tolta sopra la linea dei gradini:
   // resta il pieno sotto, gradinato. Alzate rosse come i tronchi, pedate blu come il piano di sotto
-  const SCALA = { x0: SX + 30, x1: SX - 30, y1: 0.4, n: 100, z: (ZS + ZF) / 2 };
+  const SCALA = { x0: SX + 30, x1: SX - 30, y1: PIANO + 0.4, n: 100, z: (ZS + ZF) / 2 };
   { const { x0, x1, y1, n } = SCALA, run = (x0 - x1) / n, rise = (Q - y1) / n;
     const sh = new THREE.Shape(); sh.moveTo(SX - 35, YB); sh.lineTo(SX + 35, YB); sh.lineTo(SX + 35, Q); sh.lineTo(x0, Q);
     for (let i = 0; i < n; i++) { const y = Q - (i + 1) * rise, x = x0 - i * run; sh.lineTo(x, y); sh.lineTo(x - run, y); }
@@ -269,6 +273,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   const TIP = P2[P2.length - 1], ROPE = 8;
   const corda = add(new THREE.Group(), piv2, TIP.x, TIP.y, TIP.z);
   add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, ROPE, 6).translate(0, -ROPE / 2, 0), new THREE.MeshStandardMaterial({ color: 0x2a2520, roughness: 0.9 })), corda);
+  add(new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.07, 8, 24), new THREE.MeshStandardMaterial({ color: 0x2a2520, roughness: 0.9 })), corda, 0, -ROPE - 0.4, 0);
   const MZ = V(ROD.x + M1.x + TIP.x, ROD.y + M1.y + TIP.y - ROPE, ROD.z + M1.z + TIP.z);
   const axO = V(0, 0, 0).crossVectors(V0Y, dirO).normalize(); // asse di flessione: perpendicolare alla direzione della punta
   const qa = new THREE.Quaternion(), qb = new THREE.Quaternion(), qw = new THREE.Quaternion(), axL = V(0, 0, 0);
@@ -306,7 +311,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
   const CORPO = OSSA.map((p) => [scene, p]);
 
   /* ---------- stato e aggiornamento (nessuna allocazione qui dentro) ---------- */
-  const S0 = { quota: 0.5, ampiezza: 0.5, valenza: 0.5, attivazione: 0.4, appoggi: [true, true, true, true], allinea: 0, struttura: 0, liv: 0, fessure: [0, 0, 0], allinea3: 1 };
+  const S0 = { quota: 0.5, ampiezza: 0.5, valenza: 0.5, attivazione: 0.4, appoggi: [true, true, true, true], allinea: 0, struttura: 0, liv: 0, sotto: PIANO, livello: 0, fessure: [0, 0, 0], allinea3: 1 };
   const cold = new THREE.Color(0x3e5664), warmW = new THREE.Color(0x6b5a44), tmpC = new THREE.Color();
   let ripT = 0, porte = 0, liv = 0, fframe = 0, ondaT = 0; const ondaFredda = new THREE.Color(0x7fc4ff), ondaCalda = new THREE.Color(0xffd9a0);
   function aggiorna(dt, t, st) {
@@ -314,18 +319,20 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
     let tolti = 0; for (let i = 0; i < 4; i++) { const a = alberi[i]; const target = st.appoggi[i] ? 1 : 0; a.presente += (target - a.presente) * Math.min(1, dt * 1.2); if (!st.appoggi[i]) tolti++; }
     const base = -10 + 20 * st.quota, calo = tolti * 7 * (1.35 - 0.7 * st.ampiezza);
     const k = Math.min(1, dt * (1.6 - 1.1 * st.ampiezza));
-    liv += (base - calo - liv) * k; st.liv = liv;
-    SOPRA.position.y = liv; SOTTO.position.y = liv;
-    { const sc = 0.75 + 0.5 * st.ampiezza, hx = BX * sc, hz = BZ * sc, zf = Math.min(TAGLIO, hz), h = Math.max(0.01, liv + WY - FOND), y = liv + WY;
+    liv += (base - calo - liv) * k;
+    // sopra resta fermo; il pavimento (e l'acqua, i tronchi) segue il livello, senza scendere sotto le fondamenta
+    const yS = Math.max(FOND + 9, PIANO + liv); st.liv = 0; st.sotto = yS; st.livello = liv;
+    SOPRA.position.y = 0; SOTTO.position.y = yS;
+    { const sc = 0.75 + 0.5 * st.ampiezza, hx = BX * sc, hz = BZ * sc, zf = Math.min(TAGLIO, hz), h = Math.max(0.01, yS + WY - FOND), y = yS + WY;
       surf.scale.set(2 * hx, 2 * hz, 1);
       pareti[0].position.set(BC.x, y, zf + 0.2); pareti[0].scale.set(2 * hx, h, 1);
       pareti[1].position.set(BC.x, y, -hz); pareti[1].scale.set(2 * hx, h, 1);
       pareti[2].position.set(BC.x - hx, y, (zf - hz) / 2); pareti[2].scale.set(zf + hz, h, 1);
       pareti[3].position.set(BC.x + hx, y, (zf - hz) / 2); pareti[3].scale.set(zf + hz, h, 1);
-      menisco.position.set(BC.x, y - 0.12, zf + 0.25); menisco.scale.x = 2 * hx; motoU.uBox.value.set(BC.x - hx, BC.x + hx, -hz, zf - 0.5); }
-    motoU.uT.value = t; motoU.uAtt.value = st.attivazione; motoU.uTop.value = liv + WY - 0.6;
+      menisco.position.set(BC.x, y - 0.12, zf + 0.25); menisco.scale.x = 2 * hx; fondaBox.scale.set(2 * hx, 1, zf + hz); fondaBox.position.z = (zf - hz) / 2; motoU.uBox.value.set(BC.x - hx, BC.x + hx, -hz, zf - 0.5); }
+    motoU.uT.value = t; motoU.uAtt.value = st.attivazione; motoU.uTop.value = yS + WY - 0.6;
     // i tronchi: dalle fondamenta alla pellicola; quello tolto si ritira verso il basso
-    const span = Math.max(1, liv - 2.2 - FOND);
+    const span = Math.max(1, yS - 2.2 - FOND);
     for (let i = 0; i < 4; i++) { const a = alberi[i]; a.trunk.scale.set(1, span * (0.25 + 0.75 * a.presente), 1); a.trunk.position.y = -2.2 - span * 0.75 * (1 - a.presente); }
     // la pellicola: poggia sulle cime dei tronchi presenti; senza appoggio cede. L'ampiezza la allarga
     if ((fframe++ & 1) === 0) {
@@ -338,7 +345,7 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
       filmG.attributes.position.needsUpdate = true; filmG.computeVertexNormals();
     }
     // la canna del mezzanino: dalle fondamenta (ferme) fino al nido (che sale e scende); la brezza cresce e cala
-    rodLow.scale.y = Math.max(1, ROD.y + liv - FOND);
+    rodLow.scale.y = ROD.y - FOND;
     const brezza = (0.25 + 0.75 * st.attivazione) * (0.55 + 0.45 * Math.sin(t * 0.13)) * (1 + 0.25 * Math.sin(t * 1.7));
     const f = Math.sin(t * 0.85) + 0.35 * Math.sin(t * 2.1 + 1);
     piv1.rotation.set(0, 0, 0); piv1.quaternion.setFromAxisAngle(axO, 0.035 * brezza * f);
@@ -366,5 +373,5 @@ export function costruisci(scene, { low = false, env = null, corridoio = 'nastro
     for (let i = 0; i < lame.length; i++) lame[i].material.opacity = Math.min(1, (i % 2 ? 0.4 : 0.32) * (0.85 + 0.15 * Math.sin(t * 0.6 + i)) * (1 + 1.8 * st.fessure[i >> 1]));
   }
 
-  return { appendi: (o) => { o.position.y = -ROPE; corda.add(o); }, motoU, mobius, MOBIUS: corridoio !== 'anello', SOPRA, SOTTO, aggiorna, S0, objectsToIntersect, ANCORE, CHIUSE, APPOGGI, CORPO, NECK, CORR, SOGLIA_X, NECK0, MZ, alberi, SCALA };
+  return { motoU, mobius, MOBIUS: corridoio !== 'anello', SOPRA, SOTTO, aggiorna, S0, objectsToIntersect, ANCORE, CHIUSE, APPOGGI, CORPO, NECK, CORR, SOGLIA_X, NECK0, MZ, alberi, SCALA };
 }
