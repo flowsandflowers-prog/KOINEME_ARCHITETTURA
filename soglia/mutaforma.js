@@ -39,6 +39,13 @@ export async function caricaAnimale(nome, misura, parent) {
 export async function creaMutaforma(scene, area) {
   const forme = await Promise.all(FORME.map(async (d) => { const f = await caricaAnimale(d.nome, d.misura, scene); f.g.visible = false; return f; }));
   const FN = Object.fromEntries(forme.map((x) => [x.nome, x]));
+  // scuro fuori, bianco dopo la Soglia: un solo materiale per tutte le forme, il tono va da 0 (scuro) a 1 (luminoso)
+  const veste = new THREE.MeshStandardMaterial({ color: 0x1b1916, roughness: 0.6, metalness: 0.05, emissive: 0xeef3ff, emissiveIntensity: 0 });
+  const SCURO = new THREE.Color(0x1b1916), CHIARO = new THREE.Color(0xe4e9f0);
+  for (const x of forme) for (const m of x.meshes) m.material = veste;
+  let tono = 0, tonoT = 0;
+  // l'animazione segue il movimento: fermo, cammina, corre (in regia); «anima(nome)» la fissa a mano
+  let fissa = null, vel = 0; const ultima = V(0, 0, 0);
 
   // la polvere: della trasformazione e dell'attraversamento delle fessure
   const N = 1100;
@@ -53,11 +60,14 @@ export async function creaMutaforma(scene, area) {
     fm.g.updateMatrixWorld(true);
     for (let i = 0; i < N; i++) { const m = fm.meshes[i % fm.meshes.length], n = m.geometry.attributes.position.count; m.getVertexPosition(Math.floor(Math.random() * n), tv); tv.applyMatrix4(m.matrixWorld); out[i * 3] = tv.x; out[i * 3 + 1] = tv.y; out[i * 3 + 2] = tv.z; }
   }
-  // la nuvola: intorno a pos, schiacciata in profondità (sz) quando passa in una fessura; gira su sé stessa
+  // la nuvola: una nebulosa morbida intorno a pos; ogni granello fluttua piano per conto suo (niente vortice).
+  // In una fessura si schiaccia in profondità (sz)
   let sz = 1, tNow = 0;
   function nuvola(out) {
-    for (let i = 0, j = 0; i < N; i++, j += 3) { const a = tNow * 2.2 + J[j + 1] * 9, c = Math.cos(a), s = Math.sin(a), x = J[j] * 1.8, z = J[j + 2] * 1.8;
-      out[j] = pos.x + x * c - z * s * 0.3; out[j + 1] = pos.y + 1.1 + J[j + 1] * 1.8; out[j + 2] = pos.z + (x * s * 0.3 + z * c) * sz; }
+    for (let i = 0, j = 0; i < N; i++, j += 3) { const a = J[j] * 23, b = J[j + 1] * 29, c = J[j + 2] * 31;
+      out[j] = pos.x + J[j] * 2.4 + 0.35 * Math.sin(tNow * 0.7 + a);
+      out[j + 1] = pos.y + 1.2 + J[j + 1] * 1.9 + 0.3 * Math.sin(tNow * 0.9 + b);
+      out[j + 2] = pos.z + (J[j + 2] * 2.4 + 0.35 * Math.sin(tNow * 0.8 + c)) * sz; }
   }
 
   // stato
@@ -99,21 +109,30 @@ export async function creaMutaforma(scene, area) {
     pos,
     nomi: FORME.map((x) => x.nome),
     // la regia dello Smistamento: ferma il vagare; muta, metti, corri; lascia lo riporta sulla piattaforma
-    prendi() { regia = true; if (f.vola && !inPolvere) { f.g.rotation.x = 0; } },
+    prendi() { regia = true; fissa = null; ultima.copy(pos); vel = 0; if (f.vola && !inPolvere) { f.g.rotation.x = 0; } },
+    tono(v) { tonoT = v; },
     muta(nome, dur = 0.8) { const v = nome === 'polvere' ? 'polvere' : FN[nome]; if (v !== 'polvere' && v === f && !inPolvere) return Promise.resolve(); return avviaMuta(v, dur); },
     metti(x, y, z, ya) { pos.set(x, y, z); if (ya !== undefined) yaw = ya; if (!inPolvere && !muta) { f.g.position.copy(pos); f.g.rotation.y = yaw; } },
     schiaccia(v) { sz = v; },
-    anima(chiave) { if (inPolvere) return; const n = chiave === 'corre' ? f.corre : chiave === 'va' ? f.va : chiave === 'sta' ? f.sta?.[0] : chiave; suona(f, n); },
+    anima(nome) { fissa = nome || null; if (fissa && !inPolvere) suona(f, fissa); },
     ferma(v) { if (f.corrente) f.corrente.timeScale = v; },
-    lascia() { regia = false; if (muta) finisci(); inPolvere = false; polvere.visible = false; pos.set((area.x0 + area.x1) / 2, area.y, (area.z0 + area.z1) / 2); yaw = Math.PI / 2;
+    lascia() { regia = false; fissa = null; tonoT = 0; if (muta) finisci(); inPolvere = false; polvere.visible = false; pos.set((area.x0 + area.x1) / 2, area.y, (area.z0 + area.z1) / 2); yaw = Math.PI / 2;
       for (const x of forme) { if (x.corrente) x.corrente.timeScale = 1; x.g.rotation.set(0, 0, 0); } f = forme.filter((x) => !x.vola)[Math.floor(Math.random() * 3)]; f.g.rotation.set(0, yaw, 0); avvia(f); colloca(f); mostra(f); prossimo = rnd(9, 16); },
     update(dt, t) {
       tNow = t;
+      tono += (tonoT - tono) * (1 - Math.exp(-dt * 1.5)); veste.color.copy(SCURO).lerp(CHIARO, tono); veste.emissiveIntensity = 0.85 * tono;
+      if (regia && dt > 0) { // la velocità del daemon decide il passo
+        const d = Math.hypot(pos.x - ultima.x, pos.z - ultima.z, (pos.y - ultima.y) * 0.5) / dt; vel += (d - vel) * Math.min(1, dt * 6); ultima.copy(pos);
+        if (!inPolvere && !muta && !fissa && !f.vola) {
+          if (vel < 0.4) suona(f, f.sta[0]); else if (vel < f.vel * 1.8) suona(f, f.va); else suona(f, f.corre);
+          if (f.corrente) f.corrente.timeScale = vel < 0.4 ? 1 : THREE.MathUtils.clamp(vel / (vel < f.vel * 1.8 ? f.vel : f.vel * 4), 0.7, 1.5);
+        }
+      }
       if (muta) { // la trasformazione: la polvere passa dalla forma vecchia alla nuova, e segue lo spostamento
         muta.k += dt / muta.dur; const k = Math.min(1, muta.k), e = k * k * (3 - 2 * k), b = Math.sin(Math.PI * k), p = pg.attributes.position.array;
         const dx = pos.x - p0.x, dy = pos.y - p0.y, dz = pos.z - p0.z;
         if (muta.verso === 'polvere') nuvola(B);
-        for (let i = 0; i < N * 3; i += 3) { p[i] = A[i] + (B[i] - A[i]) * e + b * 1.2 * J[i] + dx; p[i + 1] = A[i + 1] + (B[i + 1] - A[i + 1]) * e + b * (0.5 + 1.0 * (J[i + 1] + 0.5)) + dy; p[i + 2] = A[i + 2] + (B[i + 2] - A[i + 2]) * e + b * 1.2 * J[i + 2] * sz + dz; }
+        for (let i = 0; i < N * 3; i += 3) { p[i] = A[i] + (B[i] - A[i]) * e + b * 0.7 * J[i] + dx; p[i + 1] = A[i + 1] + (B[i + 1] - A[i + 1]) * e + b * 0.5 * (J[i + 1] + 0.5) + dy; p[i + 2] = A[i + 2] + (B[i + 2] - A[i + 2]) * e + b * 0.7 * J[i + 2] * sz + dz; }
         if (muta.verso === 'polvere') for (let i = 0; i < N * 3; i += 3) { p[i] -= dx * e; p[i + 1] -= dy * e; p[i + 2] -= dz * e; } // la nuvola è già nel posto giusto
         pg.attributes.position.needsUpdate = true; polvere.material.opacity = 0.45 + 0.55 * b;
         if (muta.verso !== 'polvere') { muta.verso.mixer.update(dt); }
