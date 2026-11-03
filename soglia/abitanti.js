@@ -38,7 +38,13 @@ export async function creaAbitanti(scene, W, { Q, NC, FOND }) {
 
   const tA = V(0, 0, 0), tB = V(0, 0, 0), RN = V(0, 0, 0), RF = V(0, 0, 0), RX = V(0, 0, 0), M = new THREE.Matrix4();
   let fase = 0, scatto = 0;
+  // per la camera: dove sta l'animale di ogni spazio (in coordinate del mondo) e da che distanza guardarlo
+  const FONDO = V(S.x1 + 12, FOND + 1.5, 34);
+  const DI = { stanza: cervo, anticamera: cervo2, corridoio: volpe, sotto: lepre, struttura: cicogna };
+  const VISTA = { stanza: [-4, 4, 5], anticamera: [-13, 4, 7], corridoio: [6, 5, 26], sotto: [9, 4, 13], struttura: [-28, 10, 30], fondamenta: [-22, 14, 38] };
   return {
+    VISTA,
+    posizione(k, out) { if (k === 'fondamenta') return out.copy(FONDO); const a = DI[k]; if (!a) return null; a.g.getWorldPosition(out); out.y += 1.2; return out; },
     update(dt, t) {
       for (const a of [cervo, cervo2, volpe, lepre, cicogna]) a.mixer.update(dt);
       // la stanza: un cerchio intorno alla luce
