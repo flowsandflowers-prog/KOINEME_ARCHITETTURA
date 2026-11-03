@@ -249,6 +249,9 @@ async function start() {
   const lerp = (a, b, u) => a + (b - a) * u, eo = (u) => 1 - Math.pow(1 - u, 3), ei = (u) => u * u;
   const camA = V(0, 0, 0), camT = V(0, 0, 0);
   function inquadra(px, py, pz, tx, ty, tz) { camera.position.set(px, py, pz); controls.target.set(tx, ty, tz); }
+  // un tragitto: una curva percorsa a velocità costante; restituisce la funzione che colloca il daemon al tempo e
+  function tragitto(punti, vel) { const c = new THREE.CatmullRomCurve3(punti, false, 'centripetal', 0.2), L = c.getLength(), p = V(0, 0, 0), tg = V(0, 0, 0);
+    return { durata: L / vel, a(e) { const u = Math.min(1, e * vel / L); c.getPointAt(u, p); c.getTangentAt(Math.min(0.999, u), tg); MUTA.metti(p.x, p.y, p.z, Math.atan2(tg.x, tg.z)); return u >= 1; } }; }
   async function smista(idx) {
     const id = ++runId; zitto(); if (mode !== 'racconta') setMode('racconta');
     const v = VOCI[idx], M = MUTA; allineaT = 0; strutturaT = 0; segueK = null; drone = null; dest = null; ripresa = null; domanda(null); fessureT.fill(0); tremula.fill(false); allinea3T = 1;
@@ -257,55 +260,82 @@ async function start() {
     { const e = document.createElement('li'); const b = document.createElement('b'); b.textContent = DOVE_VA + ' '; e.append(b, v.doveVa); stepsEl.appendChild(e); li.push(e); }
     mark('soglia'); qtag.classList.remove('on');
     if (!M) return;
-    const X = W.SOGLIA_X, r = v.risposte, s = v.spazio, y = Q, xS = X[0] - 12;
-    const giro = ['cervo', 'volpe', 'lepre'].sort(() => Math.random() - 0.5), D = FORMA_DI[s];
-    M.prendi(); M.metti(xS, y, 0, Math.PI / 2); M.anima('sta');
+    const X = W.SOGLIA_X, r = v.risposte, s = v.spazio, y = Q, xS = X[0] - 12, E = Math.PI / 2;
+    const corrono = ['cervo', 'volpe', 'lepre'], D = FORMA_DI[s];
+    const altra = (no) => { const a = corrono.filter((x) => x !== no); return a[Math.floor(Math.random() * a.length)]; };
+    const B1 = altra(M.forma), B2 = altra(B1);
+    M.prendi(); M.tono(0); M.metti(xS, y, 0, E);
     say(`voce-${String(v.n).padStart(2, '0')}`, v.voce);
-    const P = M.pos, dx = (a, b, u) => M.metti(lerp(a, b, u), y, 0, Math.PI / 2);
-    const K = 1.87; // il ritmo: circa 20 secondi in tutto
+    const P = M.pos, dx = (a, b, u) => M.metti(lerp(a, b, u), y, 0, E);
+    // attraversare una fessura come nebulosa: si schiaccia mentre è dentro il monolite
+    const nebula = (a, b, u, xm) => { dx(a, b, u); M.schiaccia(Math.abs(P.x - xm) < 2 ? 0.35 : 1); };
+    const una = (k, fn) => { if (!M['_' + k]) { M['_' + k] = 1; fn(); } };
     await gira([
-      { d: 1.2 * K, f: (u) => { const e = eo(u); inquadra(lerp(xS - 8, xS - 7, e), lerp(y + 110, y + 4, e), lerp(24, 8, e), xS, y + 1.5, 0); } },
-      { d: 1.2 * K, on: () => M.muta(giro[0], 0.9 * K), f: (u) => inquadra(lerp(xS + 5, xS + 4, u), y + 2.3, lerp(4.5, 3.6, u), xS, y + 1.6, 0) },
-      { d: 1.5 * K, on: () => { M.anima('corre'); li[0].classList.add('on'); domanda(DOMANDE[0], null); },
-        f: (u) => { dx(xS, X[0] - 5, ei(u)); if (u > 0.5 && M.forma !== 'polvere' && !M._p) { M._p = 1; M.schiaccia(0.35); M.muta('polvere', 0.5 * K); } if (u > 0.8) { domanda(DOMANDE[0], r[0]); fessureT[0] = 1; } inquadra(P.x - 9, y + 3.2, 1.2, P.x + 4, y + 1.6, 0); } },
-      { d: 1.0 * K, f: (u) => { dx(X[0] - 5, X[0] + 5, u); M.schiaccia(Math.abs(P.x - X[0]) < 1.6 ? 0.35 : 1); inquadra(X[0] + 1.2, y + 1.8, 0, X[0] - 10, y + 1.4, 0); } },
-      { d: 1.2 * K, on: () => { M._p = 0; M.schiaccia(1); M.muta(giro[1], 0.8 * K); }, f: (u) => { const e = eo(u); inquadra(lerp(X[0] + 9, X[0] + 18, e), lerp(y + 2, y + 3.2, e), lerp(1.5, 3.5, e), P.x, y + 1.5, 0); } },
-      { d: 1.5 * K, on: () => { M.anima('corre'); li[1].classList.add('on'); domanda(DOMANDE[1], null); },
-        f: (u) => { dx(X[0] + 5, X[1] - 1.5, ei(u)); if (u > 0.55 && !M._p) { M._p = 1; M.schiaccia(0.35); M.muta('polvere', 0.45 * K); } if (u > 0.8) { domanda(DOMANDE[1], r[1]); lama(1, r[1]); }
+      // 1 la camera scende veloce dall'alto: il daemon, scuro, fermo davanti alla Soglia
+      { d: 2.2, f: (u) => { const e = eo(u); inquadra(lerp(xS - 8, xS - 7, e), lerp(y + 110, y + 4, e), lerp(24, 8, e), xS, y + 1.5, 0); } },
+      // 2 primo piano: si volta e parte
+      { d: 2.0, f: (u) => { dx(xS, xS + 2.5, ei(u)); inquadra(lerp(xS + 6, xS + 5.5, u), y + 2.3, lerp(4.5, 3.8, u), P.x, y + 1.6, 0); } },
+      // 3 da dietro: corre verso la prima fessura e, prima di entrarci, si fa nebulosa
+      { d: 2.8, on: () => { li[0].classList.add('on'); domanda(DOMANDE[0], null); },
+        f: (u) => { dx(xS + 2.5, X[0] - 4, ei(Math.min(1, u / 0.75))); if (u > 0.55) una('p1', () => M.muta('polvere', 1.1)); inquadra(P.x - 9, y + 3.2, 1.2, P.x + 4, y + 1.6, 0); } },
+      // 4 controcampo dall'interno della prima fessura: la nebulosa la attraversa, lenta
+      { d: 2.8, f: (u) => { nebula(X[0] - 4, X[0] + 4, u, X[0]); if (u > 0.5) una('r1', () => { domanda(DOMANDE[0], r[0]); fessureT[0] = 1; M.tono(0.35); }); inquadra(X[0] + 1.2, y + 1.8, 0, X[0] - 10, y + 1.4, 0); } },
+      // 5 carrello all'indietro veloce: dall'altra parte si ricompone in un altro animale
+      { d: 2.4, on: () => { M.schiaccia(1); M.muta(B1, 1.4); }, f: (u) => { const e = eo(u); inquadra(lerp(X[0] + 9, X[0] + 18, e), lerp(y + 2, y + 3.2, e), lerp(1.5, 3.5, e), P.x, y + 1.5, 0); } },
+      // 6 la camera gira e si mette dietro: corre verso la seconda fessura e si fa nebulosa
+      { d: 3.0, on: () => { li[1].classList.add('on'); domanda(DOMANDE[1], null); },
+        f: (u) => { dx(X[0] + 4, X[1] - 4, ei(Math.min(1, u / 0.7))); if (u > 0.55) una('p2', () => M.muta('polvere', 1.1));
           const a = Math.min(1, u / 0.6) * Math.PI; inquadra(P.x + 8 * Math.cos(a), y + 2.6, 6 * Math.sin(a) + 0.8, P.x, y + 1.5, 0); } },
-      { d: 1.5 * K, on: () => { li[2].classList.add('on'); domanda(DOMANDE[2], null); allinea3T = 0; },
-        f: (u) => { if (u < 0.3) { dx(X[1] - 1.5, X[1] + 3, u / 0.3); M.schiaccia(Math.abs(P.x - X[1]) < 1.6 ? 0.35 : 1); }
-          else { if (M._p) { M._p = 0; M.schiaccia(1); M.muta(giro[2], 0.6 * K).then(() => M.anima('corre')); } dx(X[1] + 3, X[2] - 1.5, ei((u - 0.3) / 0.7)); }
+      // 7 dall'alto, a tre quarti: la nebulosa passa la seconda fessura, si ricompone, riparte verso la terza
+      { d: 3.6, on: () => { allinea3T = 0; },
+        f: (u) => { if (u < 0.45) { nebula(X[1] - 4, X[1] + 4, u / 0.45, X[1]); if (u > 0.25) una('r2', () => { domanda(DOMANDE[1], r[1]); lama(1, r[1]); M.tono(0.7); }); }
+          else { una('b2', () => { M.schiaccia(1); M.muta(B2, 1.3); }); if (u > 0.85) { una('q3', () => { li[2].classList.add('on'); domanda(DOMANDE[2], null); }); dx(X[1] + 4, X[1] + 7, (u - 0.85) / 0.15); } }
           inquadra(lerp(X[1] - 6, X[1] - 2, u), y + 40, lerp(28, 25, u), X[1] + 10, y + 1, 0); } },
-      { d: 1.6 * K, on: () => { M.schiaccia(0.35); M.muta('polvere', 0.35 * K); },
-        f: (u) => { dx(X[2] - 1.5, X[2] + 2.5, Math.min(1, u / 0.5)); if (u > 0.4 && !M._r) { M._r = 1; domanda(DOMANDE[2], r[2]); allinea3T = /^sì/.test(r[2]) ? 1 : /^in parte/.test(r[2]) ? 0.5 : 0; lama(2, r[2]); }
-          if (u > 0.5 && !M._d) { M._d = 1; M.schiaccia(1); if (D !== 'polvere') M.muta(D, 0.8 * K).then(() => M.anima('sta')); }
-          inquadra(lerp(X[2] + 13, X[2] + 11, u), y + 2.2, 0.4, X[2] + 1, y + 1.6, 0); } },
+      // 8 controcampo, primo piano: arriva alla terza fessura, nebulosa, la attraversa ed esce nella forma della destinazione, bianco
+      { d: 4.6, f: (u) => {
+          if (u < 0.3) dx(X[1] + 7, X[2] - 4, ei(u / 0.3)); else nebula(X[2] - 4, X[2] + 4, Math.min(1, (u - 0.3) / 0.45), X[2]);
+          if (u > 0.2) una('p3', () => M.muta('polvere', 0.9));
+          if (u > 0.5) una('r3', () => { domanda(DOMANDE[2], r[2]); allinea3T = /^sì/.test(r[2]) ? 1 : /^in parte/.test(r[2]) ? 0.5 : 0; lama(2, r[2]); M.tono(1); });
+          if (u > 0.75) una('d', () => { M.schiaccia(1); if (D !== 'polvere') M.muta(D, 1.2); });
+          inquadra(lerp(X[2] + 14, X[2] + 11, u), y + 2.2, 0.4, X[2] + 1, y + 1.6, 0); } },
     ]);
-    M._r = M._d = M._p = 0;
+    for (const k of Object.keys(M)) if (k[0] === '_') delete M[k];
     if (id !== runId) return;
     domanda(null); li[3].classList.add('on');
-    // «dove va»: stacco sulla destinazione; il daemon fa ciò che fa il suo stato, la camera lo segue
-    const OFF = { stanza: [-4, 4, 5], anticamera: [-13, 4, 7], corridoio: [6, 5, 26], sotto: [9, 4, 13], mezzanino: [-16, 7, 16], fondamenta: [-22, 14, 38] }[s];
-    const tA = V(0, 0, 0), tB = V(0, 0, 0), RN = V(0, 0, 0), RF = V(0, 0, 0), RX = V(0, 0, 0), MM = new THREE.Matrix4();
+    // «dove va»: il tragitto si vede; la camera segue da dietro, poi si ferma sul posto d'arrivo
+    const x0 = X[2] + 4, S2 = W.SCALA, tA = V(0, 0, 0), tB = V(0, 0, 0), RN = V(0, 0, 0), RF = V(0, 0, 0), RX = V(0, 0, 0), MM = new THREE.Matrix4();
     const T0 = performance.now() / 1000, el = () => performance.now() / 1000 - T0;
-    if (s === 'stanza') { allineaT = 1; M.anima('va'); dest = () => { const a = el() * 1.6 / 9; M.metti(NC.x + Math.cos(a) * 9, Q, NC.z + Math.sin(a) * 9, Math.atan2(-Math.sin(a), Math.cos(a))); }; }
-    else if (s === 'anticamera') { const p = W.NECK.getPointAt(0.12), q = W.NECK.getPointAt(0.3); M.metti(p.x, Q, p.z, Math.atan2(q.x - p.x, q.z - p.z)); M.anima('Idle_Headlow'); dest = () => {}; }
-    else if (s === 'corridoio') { M.anima('va'); dest = () => { const th = (el() * 1.5 / 13) % (Math.PI * 4); W.mobius(th, 0, tA, RN); W.mobius(th + 0.01, 0, tB); RF.subVectors(tB, tA).normalize(); RX.crossVectors(RN, RF); MM.makeBasis(RX, RN, RF); M.metti(tA.x, tA.y, tA.z); if (M.oggetto) M.oggetto.quaternion.setFromRotationMatrix(MM); }; }
-    else if (s === 'sotto') { M.anima('Guarding'); dest = () => M.metti(68, ST.sotto, 36, 0.6); }
-    else if (s === 'mezzanino') { // la cicogna vola dalla Soglia alla punta della canna e ci si posa
-      const tip = V(W.MZ.x, W.MZ.y + 8, W.MZ.z), via = new THREE.CatmullRomCurve3([V(X[2] + 2.5, Q, 0), V(30, Q + 22, 6), V(90, Q + 52, 14), V(tip.x - 14, tip.y + 10, tip.z - 6), tip.clone()]);
-      dest = () => { const u = Math.min(1, el() / 7); via.getPointAt(u, tA); via.getTangentAt(Math.min(0.999, u), tB); M.metti(tA.x, tA.y, tA.z, Math.atan2(tB.x, tB.z)); if (u >= 1) M.ferma(0); }; }
-    else if (s === 'fondamenta') { // la polvere scende la scala fino al fondo e si posa fra i sassi
-      const S2 = W.SCALA, h = 0.6, via = new THREE.CatmullRomCurve3([V(X[2] + 2.5, Q, 0), V(S2.x0, Q + h, S2.z), V(S2.xL, S2.ym + h, S2.z), V(S2.xE + 3, S2.ym + h, (S2.z + S2.z2) / 2), V(S2.xL, S2.ym + h, S2.z2), V(S2.x1, FOND + h, S2.z2), V(S2.x1 + 14, FOND + 0.4, 36)], false, 'centripetal');
-      dest = () => { const u = Math.min(1, el() / 6); via.getPointAt(eo(u) * 0.3 + u * 0.7, tA); M.metti(tA.x, tA.y, tA.z); }; }
-    else if (s === 'struttura') { strutturaT = 1; M.metti(X[2] + 2.5, Q, 0); dest = null; flyTo('struttura', 4); }
-    if (dest) { dest(); if (M.oggetto || M.forma === 'polvere') { camA.copy(M.pos); inquadra(camA.x + OFF[0], camA.y + OFF[1], camA.z + OFF[2], camA.x, camA.y + 1.2, camA.z); } destOff = OFF; }
+    const neck = (t) => { const p = W.NECK.getPointAt(t); return V(p.x, Q, p.z); };
+    let viaggio = null, poi = null; destOff = null;
+    if (s === 'stanza') { allineaT = 1; viaggio = tragitto([V(x0, Q, 0), V(W.NECK0.x - 6, Q, 0), neck(0.1), neck(0.5), neck(0.95), V(NC.x - 9, Q, NC.z + 1)], 9);
+      poi = (t) => { const a = Math.PI + t * 1.6 / 9; M.metti(NC.x + Math.cos(a) * 9, Q, NC.z + Math.sin(a) * 9, Math.atan2(-Math.sin(a), Math.cos(a))); return [-4, 4, 5]; }; }
+    else if (s === 'anticamera') { viaggio = tragitto([V(x0, Q, 0), V(W.NECK0.x - 6, Q, 0), neck(0.12)], 8); poi = () => { M.anima('Idle_Headlow'); return [-13, 4, 7]; }; }
+    else if (s === 'corridoio') { const p0 = W.mobius(0, 0, V(0, 0, 0)); viaggio = tragitto([V(x0, Q, 0), V(p0.x - 8, Q, 0), p0], 7);
+      poi = (t) => { const th = (t * 1.5 / 13) % (Math.PI * 4); W.mobius(th, 0, tA, RN); W.mobius(th + 0.01, 0, tB); RF.subVectors(tB, tA).normalize(); RX.crossVectors(RN, RF); MM.makeBasis(RX, RN, RF); M.metti(tA.x, tA.y, tA.z); if (M.oggetto) M.oggetto.quaternion.setFromRotationMatrix(MM); return [6, 5, 26]; }; }
+    else if (s === 'sotto') { // giù per la scala fino al pavimento, poi sul pavimento
+      const fl = ST.sotto, zm = (S2.z + S2.z2) / 2, pts = [V(x0, Q, 0), V(S2.x0 + 3, Q, 8), V(S2.x0, Q, S2.z)];
+      if (fl >= S2.ym) { const xs = S2.x0 - (Q - fl) / S2.rise * S2.run; pts.push(V(xs, fl, S2.z), V(xs - 3, fl, 32)); }
+      else { const xs = S2.xL + (S2.ym - fl) / S2.rise * S2.run; pts.push(V(S2.xL, S2.ym, S2.z), V(S2.xE + 3, S2.ym, zm), V(S2.xL, S2.ym, S2.z2), V(xs, fl, S2.z2), V(xs + 3, fl, 32)); }
+      pts.push(V(60, fl, 36)); viaggio = tragitto(pts, 6); poi = () => { M.anima('Guarding'); M.metti(60, ST.sotto, 36); return [9, 4, 13]; }; }
+    else if (s === 'mezzanino') { const tip = V(W.MZ.x, W.MZ.y + 8, W.MZ.z); viaggio = tragitto([V(x0, Q, 0), V(30, Q + 22, 6), V(90, Q + 52, 14), V(tip.x - 14, tip.y + 10, tip.z - 6), tip], 9); poi = () => { M.ferma(0); return [-16, 7, 16]; }; }
+    else if (s === 'fondamenta') { const h = 0.6; viaggio = tragitto([V(x0, Q, 0), V(S2.x0, Q + h, S2.z), V(S2.xL, S2.ym + h, S2.z), V(S2.xE + 3, S2.ym + h, (S2.z + S2.z2) / 2), V(S2.xL, S2.ym + h, S2.z2), V(S2.x1, FOND + h, S2.z2), V(S2.x1 + 14, FOND + 0.4, 36)], 9); poi = () => [-22, 14, 38]; }
+    else if (s === 'struttura') { strutturaT = 1; M.metti(x0, Q, 0); flyTo('struttura', 4); }
+    let arrivo = null;
+    if (viaggio) dest = (dt) => {
+      const t = el();
+      if (!arrivo) { if (viaggio.a(t)) arrivo = t; const yw = M.oggetto ? M.oggetto.rotation.y : 0; destOff = [-Math.sin(yw) * 11 + Math.cos(yw) * 3, 4.5, -Math.cos(yw) * 11 - Math.sin(yw) * 3]; }
+      else destOff = poi(t - arrivo) || destOff;
+    };
+    const arrivato = () => new Promise((res) => { const k = setInterval(() => { if (id !== runId || !viaggio || arrivo !== null) { clearInterval(k); res(); } }, 100); });
     await (s === 'struttura' ? say('voce-struttura', RACCORDI.voceStruttura) : say('voce-arriva', RACCORDI.voceArriva));
-    if (id !== runId) return;
+    await arrivato(); if (id !== runId) return;
     mark(s); mostra(`${DOVE_VA}<i></i>`, null); qtag.querySelector('i').textContent = v.doveVa;
     await say(`dove-${s}`, v.doveVa);
-    setTimeout(() => { if (id !== runId) return; qtag.classList.remove('on'); }, 4000);
+    // cinque secondi, poi si torna al punto di partenza: il daemon, di nuovo scuro, fuori dalla prima soglia
+    await pausa(5000); if (id !== runId) return;
+    qtag.classList.remove('on'); dest = null; destOff = null; strutturaT = 0; allineaT = 0; allinea3T = 1; fessureT.fill(0); tremula.fill(false);
+    M.lascia(); mark('soglia'); fly = null;
+    inquadra(M.pos.x - 10, y + 3.5, M.pos.z + 7, M.pos.x, y + 1.6, M.pos.z); controls.update();
   }
   let destOff = null;
   function liberaDaemon() { if (dest || ripresa) { dest = null; ripresa = null; domanda(null); if (MUTA) MUTA.lascia(); } }
@@ -365,9 +395,9 @@ async function start() {
       const r = ripresa;
       if (r.i < 0 || now - r.s >= r.shots[r.i].d * 1000) { r.i++; r.s = now; if (r.i >= r.shots.length) { ripresa = null; r.res(); } else if (r.shots[r.i].on) r.shots[r.i].on(); }
       if (ripresa) { const sh = r.shots[r.i]; sh.f(Math.min(1, (now - r.s) / (sh.d * 1000)), dt); camera.lookAt(controls.target); }
-    } else if (dest && destOff && MUTA) { // «dove va»: la camera segue il daemon, morbida
-      dest(); camA.set(MUTA.pos.x + destOff[0], MUTA.pos.y + destOff[1], MUTA.pos.z + destOff[2]); camT.set(MUTA.pos.x, MUTA.pos.y + 1.2, MUTA.pos.z);
-      const kk = 1 - Math.exp(-dt * 2.5); camera.position.lerp(camA, kk); controls.target.lerp(camT, kk); camera.lookAt(controls.target);
+    } else if (dest && MUTA) { // «dove va»: la camera segue il daemon, morbida
+      dest(dt); if (destOff) { camA.set(MUTA.pos.x + destOff[0], MUTA.pos.y + destOff[1], MUTA.pos.z + destOff[2]); camT.set(MUTA.pos.x, MUTA.pos.y + 1.2, MUTA.pos.z);
+      const kk = 1 - Math.exp(-dt * 2.5); camera.position.lerp(camA, kk); controls.target.lerp(camT, kk); camera.lookAt(controls.target); }
     } else if (drone) {
       const u = Math.min(1, (now - drone.s) / drone.d), e = u * u * (3 - 2 * u); // parte e arriva morbida
       drone.path.getPoint(e, camera.position); camera.position.y += ST.liv - drone.liv;

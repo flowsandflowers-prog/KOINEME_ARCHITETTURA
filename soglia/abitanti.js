@@ -16,6 +16,9 @@ export async function creaAbitanti(scene, W, { Q, NC, FOND }) {
   const [cervo, cervo2, volpe, lepre, cicogna] = await Promise.all([
     caricaAnimale('cervo', 4.2, W.SOPRA), caricaAnimale('cervo', 3.0, W.SOPRA), caricaAnimale('volpe', 2.4, W.SOPRA),
     caricaAnimale('lepre', 2.4, W.SOTTO), caricaAnimale('cicogna', 7, W.SOPRA)]);
+  // dopo la Soglia sono luminosi
+  const luce = new THREE.MeshStandardMaterial({ color: 0xe4e9f0, roughness: 0.6, emissive: 0xeef3ff, emissiveIntensity: 0.85 });
+  for (const a of [cervo, cervo2, volpe, lepre, cicogna]) for (const m of a.meshes) m.material = luce;
   cervo.suona('Walk'); cervo2.suona('Idle_Headlow'); volpe.suona('Walk'); lepre.suona('Guarding'); cicogna.suona();
 
   // l'anticamera: fermo nel collo, guarda verso la stanza
