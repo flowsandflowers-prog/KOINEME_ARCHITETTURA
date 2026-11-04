@@ -27,3 +27,11 @@ npm run copione   # rigenera COPIONE.md da testi.js
 ```
 
 Decisioni prese in chat (2 novembre 2026): disposizione A (la Soglia sola, a una quota sua; una via sale, una scende); la struttura è l'ossatura in tubi di cartone, invisibile da fuori e visibile come pianta in trasparenza; il piano di sotto è un serbatoio (quota = livello, ampiezza = grandezza); le otto stanze chiuse hanno i nomi di Plutchik, con le opposte una di fronte all'altra; voce narrante sempre guidata, da registrare; tappeto sonoro generato; plastico in sezione, legno, bambù, carta, cartone.
+
+## La prova (`../soglia-prova/`)
+
+Una copia su cui provare un'altra direzione senza toccare la Soglia. Usa gli stessi testi (`soglia/testi.js`), modelli e voce.
+- Il nido è aperto in alto. L'anticamera è una volta da attraversare sotto, con il suo pavimento.
+- Le otto stanze sono sacche appese al nido, ognuna del suo colore.
+- Il corridoio è il tratto del passaggio fra la Soglia e l'anticamera.
+- Lo Smistamento è fatto di poche viste composte, legate da dissolvenze. La voce legge la voce, le tre domande e le tre risposte. Il daemon ha i colori naturali.
