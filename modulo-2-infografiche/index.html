@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KOINEME · Modulo 2 · Infografiche</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300;1,9..144,500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Sei tavole animate del Modulo 2. Ogni tavola è un riquadro 16:9 che scala con la propria larghezza (unità cqw):
+   nella landing si inserisce così com'è, per Keynote si registra in video con scripts/registra-infografiche.mjs.
+   ?t=3 mostra la sola tavola 3 · ?t=3&rec la mostra a tutto schermo, senza comandi, per la registrazione. */
+:root{
+  --night:#0d0b0a;
+  --night2:#15110e;
+  --ivory:#ecdcc0;
+  --ink:#f1e7d6;
+  --ink-soft:#c9bba4;
+  --ink-dim:#8f8270;
+  --ochre:#c79a5b;
+  --glow:#f4c56e;
+  --sea:#3c9e9a;
+  --rust:#c9674f;
+  --line:rgba(236,220,192,.18);
+  --display:"Fraunces",Georgia,"Times New Roman",serif;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --e:cubic-bezier(.2,.7,.2,1);
+  /* le otto emozioni */
+  --gioia:#f4c56e; --fiducia:#9fbf7a; --paura:#3c9e9a; --sorpresa:#7fb3c9;
+  --tristezza:#7486c2; --disgusto:#a385b8; --rabbia:#c9674f; --anticipazione:#de9450;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--night);color:var(--ink);font-family:var(--body)}
+body{padding:48px 16px 80px}
+.page-hd{max-width:1180px;margin:0 auto 28px;display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap}
+.page-hd h1{margin:0;font-family:var(--display);font-weight:300;font-size:clamp(26px,4vw,40px);letter-spacing:.04em}
+.page-hd p{margin:0;font-size:13px;color:var(--ink-soft);max-width:520px;line-height:1.5}
+.tav{max-width:1180px;margin:0 auto 40px}
+.tav-bar{display:flex;justify-content:space-between;align-items:center;padding:0 2px 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
+.tav-bar button{font:600 11px var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+.tav-bar button:hover,.tav-bar button:focus-visible{border-color:var(--glow);color:var(--glow)}
+.tav-bar a{color:inherit}
+
+/* ---------- il riquadro ---------- */
+.stage{position:relative;width:100%;aspect-ratio:16/9;container-type:inline-size;overflow:hidden;border-radius:14px;
+  background:radial-gradient(120% 90% at 70% 10%,#1d1712 0%,var(--night) 60%) , var(--night);
+  border:1px solid var(--line);padding:4.6cqw 5.6cqw 3.4cqw;display:flex;flex-direction:column}
+.stage::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(60% 50% at 15% 100%,rgba(199,154,91,.07),transparent 70%)}
+.eb{margin:0;font-size:max(.82cqw,10px);letter-spacing:.2em;text-transform:uppercase;color:var(--ochre);font-weight:600}
+h2{margin:.9cqw 0 0;font-family:var(--display);font-weight:300;font-size:3.3cqw;line-height:1.08;letter-spacing:-.005em;text-wrap:balance}
+h2 em{font-style:italic;color:var(--glow)}
+.lead{margin:1cqw 0 0;font-family:var(--display);font-style:italic;font-weight:300;font-size:max(1.35cqw,13px);line-height:1.4;color:var(--ink-soft);max-width:62cqw}
+.ft{position:absolute;left:5.6cqw;right:5.6cqw;bottom:2.4cqw;display:flex;justify-content:space-between;font-size:max(.72cqw,9px);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim)}
+.ft b{font-weight:600;color:var(--ink-soft)}
+
+/* ---------- animazioni: partono quando il riquadro riceve .on ---------- */
+.js .stage:not(.on) .a,.js .stage:not(.on) .ai,.js .s3:not(.on) .w,.js .s3:not(.on) .ne{opacity:0}
+.on .a{animation:up 1s var(--e) calc(var(--d,0)*1s) both}
+.on .ai{animation:in 1.2s ease calc(var(--d,0)*1s) both}
+@keyframes up{from{opacity:0;transform:translateY(1.4cqw)}to{opacity:1;transform:none}}
+@keyframes in{from{opacity:0}to{opacity:1}}
+@keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes breathe{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+@keyframes ring{from{opacity:.7;transform:scale(.4)}to{opacity:0;transform:scale(2.4)}}
+
+/* ---------- 1 · il flusso ---------- */
+.s1 .flow{position:relative;display:grid;grid-template-columns:repeat(3,1fr);margin-top:auto}
+.s1 .rail{position:absolute;left:16.66%;right:16.66%;top:1.1cqw;height:.18cqw;background:rgba(236,220,192,.12)}
+.s1 .rail-line{position:absolute;inset:0;background:linear-gradient(90deg,var(--sea),var(--glow) 50%,var(--ochre));transform-origin:left;transform:scaleX(0)}
+.s1.on .rail-line{animation:grow 2.4s var(--e) 1s both}
+@keyframes grow{to{transform:scaleX(1)}}
+.s1 .pulse{position:absolute;top:50%;left:0;width:1.3cqw;height:1.3cqw;margin:-.65cqw 0 0 -.65cqw;border-radius:50%;
+  background:radial-gradient(circle,#fff6dc 0%,var(--glow) 35%,rgba(244,197,110,0) 70%);opacity:0}
+.s1.on .pulse{animation:travel 3.4s cubic-bezier(.5,0,.5,1) 3.4s infinite}
+@keyframes travel{0%{left:0;opacity:0}8%{opacity:1}92%{opacity:1}100%{left:100%;opacity:0}}
+.s1 .node{text-align:center;position:relative}
+.s1 .dot{display:block;width:2.4cqw;height:2.4cqw;margin:0 auto 1.4cqw;border-radius:50%;border:.16cqw solid var(--glow);background:var(--night);box-shadow:0 0 2cqw rgba(244,197,110,.35)}
+.s1 .node:nth-child(2) .dot{border-color:var(--sea);box-shadow:0 0 2cqw rgba(60,158,154,.4)}
+.s1 .node:nth-child(4) .dot{border-color:var(--ochre)}
+.s1 .num{display:block;font-size:max(.8cqw,10px);letter-spacing:.2em;color:var(--ink-dim)}
+.s1 .node b{display:block;font-family:var(--display);font-weight:500;font-size:2.5cqw;margin-top:.3cqw}
+.s1 .node i{display:block;font-family:var(--display);font-style:italic;font-weight:300;font-size:max(1.6cqw,13px);color:var(--ink-soft)}
+.s1 .jam{margin:4cqw auto 0;max-width:68cqw;display:flex;gap:1.6cqw;align-items:flex-start;padding:1.3cqw 1.8cqw;border-left:.28cqw solid var(--rust);background:linear-gradient(90deg,rgba(201,103,79,.12),transparent)}
+.s1 .jam .tag{flex:none;font-size:max(.8cqw,10px);letter-spacing:.18em;text-transform:uppercase;color:var(--rust);font-weight:600;padding-top:.35cqw}
+.s1 .jam p{margin:0;font-size:max(1.3cqw,12px);line-height:1.45;color:var(--ink)}
+.s1 .jam strong{font-weight:600;letter-spacing:.08em;color:var(--glow)}
+.s1 .levers{display:grid;grid-template-columns:repeat(3,1fr);gap:2cqw;margin:3cqw 0 auto;padding:0 4cqw}
+.s1 .lv{text-align:center;padding:1.1cqw 0;border-top:.14cqw solid var(--glow);background:linear-gradient(180deg,rgba(244,197,110,.08),transparent)}
+.s1 .lv small{display:block;font-size:max(.75cqw,9px);letter-spacing:.2em;text-transform:uppercase;color:var(--ochre)}
+.s1 .lv span{display:block;font-family:var(--display);font-size:max(1.8cqw,14px);margin-top:.2cqw}
+
+/* ---------- 2 · quattro coppie ---------- */
+.s2{flex-direction:row;gap:3cqw;align-items:center}
+.s2 .wheel{flex:0 0 44%;height:100%;display:flex;align-items:center;justify-content:center}
+.s2 svg{width:100%;height:auto;max-height:100%;overflow:visible}
+.s2 .txt{flex:1;display:flex;flex-direction:column}
+.s2 .lessons{list-style:none;margin:2.6cqw 0 0;padding:0;border-top:1px solid var(--line)}
+.s2 .lessons li{display:grid;grid-template-columns:9cqw 1fr;align-items:baseline;padding:1.05cqw 0;border-bottom:1px solid var(--line)}
+.s2 .lessons small{font-size:max(.78cqw,10px);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim)}
+.s2 .lessons span{font-family:var(--display);font-size:max(2cqw,15px);font-weight:300}
+.s2 .lessons span b{font-weight:500}
+.s2 .lessons span i{font-style:italic;color:var(--ink-dim);font-size:.8em;padding:0 .4em}
+.s2 .chips{display:flex;gap:1cqw;margin-top:2.2cqw;flex-wrap:wrap}
+.chip{font-size:max(.95cqw,11px);letter-spacing:.06em;padding:.6cqw 1.2cqw;border:1px solid var(--line);border-radius:999px;color:var(--ink)}
+.chip b{color:var(--glow);font-weight:600}
+.s2 .lbl{font-family:var(--display);font-size:21px;fill:var(--ink)}
+.s2 .dia{fill:none;stroke-width:2.2;stroke-dasharray:1;stroke-dashoffset:1}
+.s2.on .dia{animation:draw 1.3s var(--e) calc(var(--d)*1s) both}
+.s2 .core{transform-origin:300px 300px;transform-box:view-box}
+.s2.on .core{animation:breathe 3.2s ease-in-out 9s infinite}
+
+/* ---------- 3 · differenze ---------- */
+.s3 .rows{margin:auto auto 0;width:100%;max-width:80cqw;display:flex;flex-direction:column;gap:1.9cqw}
+.s3 .row{display:grid;grid-template-columns:1fr 6cqw 1fr;align-items:center}
+.s3 .w{font-family:var(--display);font-weight:300;font-size:3.7cqw;line-height:1}
+.s3 .w1{text-align:right;color:var(--ink)}
+.s3 .w2{text-align:left;color:var(--ink-soft);font-style:italic}
+.s3 .ne{text-align:center;font-family:var(--display);font-size:2.6cqw;color:var(--glow)}
+.s3.on .w1{animation:apartL 1.6s var(--e) calc(var(--d)*1s) both}
+.s3.on .w2{animation:apartR 1.6s var(--e) calc(var(--d)*1s) both}
+.s3.on .ne{animation:neIn .8s ease calc(var(--d)*1s + 1s) both}
+@keyframes apartL{0%{opacity:0;transform:translateX(9cqw);filter:blur(.5cqw)}30%{opacity:.75;transform:translateX(9cqw);filter:blur(.35cqw)}100%{opacity:1;transform:none;filter:none}}
+@keyframes apartR{0%{opacity:0;transform:translateX(-9cqw);filter:blur(.5cqw)}30%{opacity:.75;transform:translateX(-9cqw);filter:blur(.35cqw)}100%{opacity:1;transform:none;filter:none}}
+@keyframes neIn{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:none}}
+.s3 .close{margin:3.6cqw auto auto;text-align:center;font-family:var(--display);font-style:italic;font-weight:300;font-size:max(1.4cqw,13px);color:var(--ink-soft);max-width:60cqw}
+
+/* ---------- 4 · CORE S+PAKB ---------- */
+.s4{display:grid;grid-template-columns:42% 1fr;grid-template-rows:1fr auto;column-gap:2cqw}
+.s4 .txt{display:flex;flex-direction:column;justify-content:center}
+.s4 .acr{margin:.8cqw 0 0;font-family:var(--display);font-weight:300;font-size:5cqw;letter-spacing:.04em;line-height:1}
+.s4 .acr span{display:inline-block;color:var(--ink-dim)}
+.s4.on .acr .L{animation:lit .9s ease calc(var(--d)*1s) both}
+@keyframes lit{from{color:var(--ink-dim);text-shadow:none}to{color:var(--glow);text-shadow:0 0 2cqw rgba(244,197,110,.45)}}
+.s4 .exp{margin:1.2cqw 0 0;font-size:max(1.05cqw,11px);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.s4 .exp2{margin:.5cqw 0 0;font-family:var(--display);font-style:italic;font-weight:300;font-size:max(1.4cqw,13px);color:var(--ink)}
+.s4 .cap{margin:2.2cqw 0 0;font-size:max(1.2cqw,12px);line-height:1.5;color:var(--ink-soft);max-width:36cqw}
+.s4 .cap b{color:var(--ink);font-weight:500}
+.s4 .dia{display:flex;align-items:center;justify-content:center;min-height:0}
+.s4 svg{width:100%;height:100%;overflow:visible}
+.s4 .cam{opacity:0}
+.s4.on .cam{animation:in .9s ease calc(var(--d)*1s) both}
+.s4 .beam{opacity:0}
+.s4.on .beam{animation:beam 1.6s ease calc(var(--d)*1s) both}
+@keyframes beam{from{opacity:0}to{opacity:1}}
+.s4 .name{font-family:var(--display);font-size:22px;fill:var(--ink);text-anchor:middle}
+.s4 .rg{transform-box:fill-box;transform-origin:center}
+.s4.on .rg{animation:ring 3.6s ease-out 7.2s infinite}
+.s4.on .rg2{animation-delay:9s}
+.s4 .base{grid-column:1/-1;margin-bottom:2.2cqw;padding-top:1.3cqw;border-top:1px solid var(--line);display:flex;gap:2.4cqw;align-items:baseline;flex-wrap:wrap}
+.s4 .base .who{font-size:max(1.05cqw,11px);color:var(--ink-soft)}
+.s4 .base .who b{font-family:var(--display);font-size:max(1.5cqw,14px);font-weight:500;color:var(--ink);margin-right:.5em}
+.s4 .vals{display:flex;gap:.8cqw;flex-wrap:wrap}
+.s4 .vals .chip{border-color:rgba(60,158,154,.5)}
+
+/* ---------- 5 · chi sei dopo ---------- */
+.s5 .cols{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:2.6cqw;margin:auto 0;min-height:27cqw}
+.s5 .col{position:relative;padding:1.8cqw 1.8cqw 1.4cqw;border:1px solid var(--line);border-radius:1cqw;background:rgba(255,255,255,.015);display:flex;flex-direction:column}
+.s5 .col.last{border-color:rgba(244,197,110,.45);background:linear-gradient(180deg,rgba(244,197,110,.07),transparent 70%)}
+.s5 .col + .col::before{content:"";position:absolute;left:-2.6cqw;top:3.2cqw;width:2.6cqw;height:.14cqw;background:var(--ochre)}
+.s5 .mod{font-size:max(.78cqw,10px);letter-spacing:.2em;text-transform:uppercase;color:var(--ochre);font-weight:600}
+.s5 .q{margin:.8cqw 0 0;font-family:var(--display);font-weight:300;font-size:max(2.15cqw,15px);line-height:1.15}
+.s5 .q em{color:var(--glow)}
+.s5 ul{list-style:none;margin:1.4cqw 0 0;padding:0;display:flex;flex-direction:column;gap:.55cqw}
+.s5 li{font-size:max(1.18cqw,11px);line-height:1.35;color:var(--ink-soft);padding-left:1.2cqw;position:relative}
+.s5 li::before{content:"";position:absolute;left:0;top:.55em;width:.5cqw;height:.5cqw;border-radius:50%;border:1px solid var(--ink-dim)}
+.s5 .no li::before{content:"≠";border:0;width:auto;height:auto;top:0;color:var(--rust);font-family:var(--display)}
+.js .s5:not(.on) .no li{opacity:0}
+.s5.on .no li{animation:strike .9s ease calc(var(--d)*1s) both}
+@keyframes strike{from{opacity:0;transform:translateX(-.8cqw)}to{opacity:1;transform:none}}
+.s5 .dots{display:flex;gap:.55cqw;margin-top:1.4cqw}
+.s5 .dots i{width:1.15cqw;height:1.15cqw;border-radius:50%}
+.s5 .out{margin-top:auto;padding-top:1.6cqw;font-family:var(--display);font-style:italic;font-weight:300;font-size:max(1.3cqw,12px);line-height:1.4;color:var(--ink)}
+
+/* ---------- 6 · lo spazio ---------- */
+.s6{align-items:center;text-align:center;justify-content:center}
+.s6 > .eb{position:absolute;top:4.6cqw;left:0;right:0}
+.s6 .gap{display:flex;align-items:stretch;justify-content:center;margin-top:0;height:8cqw}
+.s6 .blk{width:21cqw;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:2.4cqw;font-weight:300;border:1px solid var(--line);background:rgba(255,255,255,.02)}
+.s6 .blk:first-child{border-radius:1cqw 0 0 1cqw;border-right:0}
+.s6 .blk:last-child{border-radius:0 1cqw 1cqw 0;border-left:0}
+.s6 .space{width:0;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(60% 100% at 50% 50%,rgba(244,197,110,.35),rgba(244,197,110,.04) 70%);border-left:.14cqw solid var(--glow);border-right:.14cqw solid var(--glow);opacity:0}
+.s6 .space span{font-size:max(.85cqw,10px);letter-spacing:.3em;text-transform:uppercase;color:var(--glow);white-space:nowrap;opacity:0}
+.s6.on .space{animation:open 2.4s var(--e) 1.4s both}
+.s6.on .space span{animation:in 1s ease 3.2s both}
+@keyframes open{0%{width:0;opacity:0}15%{opacity:1}100%{width:20cqw;opacity:1}}
+.s6 .say{margin:3cqw auto 0;max-width:62cqw;font-size:max(1.35cqw,13px);line-height:1.5;color:var(--ink-soft)}
+.s6 .say b{color:var(--ink);font-weight:500}
+.s6 .big{margin:3.4cqw auto 0;max-width:70cqw;font-family:var(--display);font-weight:300;font-size:3cqw;line-height:1.15;text-wrap:balance}
+.s6 .big2{margin:1.2cqw auto 0;max-width:62cqw;font-family:var(--display);font-style:italic;font-weight:300;font-size:max(1.7cqw,14px);line-height:1.35;color:var(--glow);text-wrap:balance}
+
+/* ---------- telefono: il riquadro si allunga e gli elementi si impilano ---------- */
+@media (max-width:720px){
+  body{padding:28px 12px 60px}
+  .stage{aspect-ratio:auto;padding:22px 18px 46px;border-radius:12px}
+  .eb{font-size:10px}
+  h2{font-size:26px;margin-top:8px}
+  .lead{font-size:15px;max-width:none;margin-top:10px}
+  .ft{left:18px;right:18px;bottom:16px;font-size:9px}
+  .ft span:last-child{display:none}
+  .s2 .lbl{font-size:25px}
+  .s2 .wheel{padding:0 34px}
+  .s4 .name{font-size:34px}
+  .s1 .flow{grid-template-columns:1fr;gap:18px;margin-top:24px;padding-left:44px}
+  .s1 .rail{left:13px;right:auto;top:12px;bottom:12px;width:2px;height:auto}
+  .s1 .rail-line{transform-origin:top;transform:scaleY(0);background:linear-gradient(180deg,var(--sea),var(--glow),var(--ochre))}
+  @keyframes grow{to{transform:scaleY(1)}}
+  .s1 .pulse{display:none}
+  .s1 .node{text-align:left}
+  .s1 .dot{position:absolute;left:-44px;top:0;width:28px;height:28px;margin:0;border-width:2px}
+  .s1 .node b{font-size:22px}
+  .s1 .node i{font-size:16px}
+  .s1 .jam{margin-top:22px;flex-direction:column;gap:6px;padding:12px 14px;border-left-width:3px}
+  .s1 .jam p{font-size:15px}
+  .s1 .levers{grid-template-columns:1fr;gap:8px;padding:0;margin-top:18px}
+  .s1 .lv{display:flex;justify-content:space-between;align-items:baseline;padding:10px 4px;text-align:left}
+  .s1 .lv span{font-size:18px}
+  .s2{flex-direction:column;gap:12px}
+  .s2 .wheel{flex:none;width:100%;max-width:360px;order:2;margin:0 auto}
+  .s2 .txt{order:1}
+  .s2 .lessons{margin-top:16px}
+  .s2 .lessons li{grid-template-columns:86px 1fr;padding:9px 0}
+  .s2 .lessons span{font-size:18px}
+  .s2 .chips{gap:8px;margin-top:14px}
+  .chip{font-size:12px;padding:6px 12px}
+  .s3 .rows{margin-top:24px;gap:14px;max-width:none}
+  .s3 .row{grid-template-columns:1fr 34px 1fr}
+  .s3 .w{font-size:clamp(15px,4.4vw,24px);white-space:nowrap}
+  .s3 .row{grid-template-columns:1fr 28px 1fr}
+  .s3 .ne{font-size:22px}
+  @keyframes apartL{0%{opacity:0;transform:translateX(30px);filter:blur(3px)}30%{opacity:.75;transform:translateX(30px);filter:blur(2px)}100%{opacity:1;transform:none;filter:none}}
+  @keyframes apartR{0%{opacity:0;transform:translateX(-30px);filter:blur(3px)}30%{opacity:.75;transform:translateX(-30px);filter:blur(2px)}100%{opacity:1;transform:none;filter:none}}
+  .s3 .close{font-size:15px;max-width:none;margin-top:24px}
+  .s4{display:flex;flex-direction:column}
+  .s4 .acr{font-size:40px}
+  .s4 .exp{font-size:11px}
+  .s4 .exp2{font-size:16px}
+  .s4 .cap{font-size:14px;max-width:none;margin-top:14px}
+  .s4 .dia{margin:10px auto 0;width:100%;max-width:380px}
+  .s4 .base{margin-bottom:6px;gap:10px;padding-top:14px}
+  .s4 .base .who{font-size:13px}
+  .s4 .base .who b{font-size:17px}
+  .s5 .cols{grid-template-columns:1fr;gap:22px;margin-top:20px}
+  .s5 .col{padding:16px 16px 14px;border-radius:10px}
+  .s5 .col + .col::before{left:24px;top:-22px;width:2px;height:22px}
+  .s5 .mod{font-size:10px}
+  .s5 .q{font-size:20px;margin-top:6px}
+  .s5 ul{margin-top:10px;gap:6px}
+  .s5 li{font-size:14px;padding-left:14px}
+  .s5 li::before{width:6px;height:6px}
+  .s5 .dots{gap:6px;margin-top:12px}
+  .s5 .dots i{width:12px;height:12px}
+  .s5 .out{font-size:15px;padding-top:12px}
+  .s6 .gap{margin-top:28px;height:64px}
+  .s6 .blk{width:34%;font-size:15px;white-space:nowrap}
+  .s6 .space span{font-size:9px;letter-spacing:.2em}
+  @keyframes open{0%{width:0;opacity:0}15%{opacity:1}100%{width:30%;opacity:1}}
+  .s6 .say{font-size:15px;max-width:none;margin-top:22px}
+  .s6 .big{font-size:24px;max-width:none;margin-top:24px}
+  .s6 .big2{font-size:17px;max-width:none}
+}
+
+/* ---------- registrazione: una sola tavola, a tutto schermo, senza comandi ---------- */
+.rec body,.rec{padding:0;overflow:hidden}
+.rec .page-hd,.rec .tav-bar{display:none}
+.rec .tav{max-width:none;margin:0;width:100vw;height:100vh}
+.rec .stage{width:100vw;height:100vh;aspect-ratio:auto;border:0;border-radius:0}
+.solo .tav:not(.pick){display:none}
+
+@media (prefers-reduced-motion:reduce){
+  .on .a,.on .ai,.s3.on .w1,.s3.on .w2,.s3.on .ne,.s4.on .acr .L,.s4.on .cam,.s4.on .beam,.s5.on .no li{animation-duration:.01s!important;animation-delay:0s!important}
+  .s1.on .rail-line,.s2.on .dia,.s6.on .space,.s6.on .space span{animation-duration:.01s!important;animation-delay:0s!important}
+  .s1.on .pulse,.s2.on .core,.s4.on .rg{animation:none!important}
+}
+</style>
+<script>
+  // segna subito la pagina: senza JavaScript le tavole restano visibili, ferme e complete
+  document.documentElement.classList.add('js');
+  { const q = new URLSearchParams(location.search);
+    if (q.has('t')) document.documentElement.classList.add('solo');
+    if (q.has('rec')) document.documentElement.classList.add('rec'); }
+</script>
+</head>
+<body>
+
+<header class="page-hd">
+  <h1>KOINEME™ · Modulo 2</h1>
+  <p>Sei tavole animate. Ognuna parte quando entra nello schermo; il pulsante la fa ripartire. Per Keynote ci sono i video, uno per tavola, in <code>video/</code>.</p>
+</header>
+
+<!-- 1 · IL FLUSSO -->
+<section class="tav" data-t="1">
+  <div class="tav-bar"><span>Tavola 1 · Il flusso</span><button type="button">Ripeti</button></div>
+  <div class="stage s1">
+    <p class="eb a" style="--d:0">KOINEME™ · Modulo 2 · Attraverso le emozioni</p>
+    <h2 class="a" style="--d:.25">Un’emozione non è un evento. <em>È un flusso unico.</em></h2>
+    <div class="flow">
+      <div class="rail"><i class="rail-line"></i><i class="pulse"></i></div>
+      <div class="node a" style="--d:1.1"><i class="dot"></i><span class="num">01</span><b>Il corpo</b><i>si attiva</i></div>
+      <div class="node a" style="--d:1.9"><i class="dot"></i><span class="num">02</span><b>La mente</b><i>valuta</i></div>
+      <div class="node a" style="--d:2.7"><i class="dot"></i><span class="num">03</span><b>Il cervello</b><i>categorizza</i></div>
+    </div>
+    <div class="jam a" style="--d:4.8">
+      <span class="tag">Dove si inceppa</span>
+      <p>Una reazione automatica, appresa dalla famiglia e dalla cultura, prende il posto della risposta a ciò che sta accadendo <strong>ADESSO</strong>.</p>
+    </div>
+    <div class="levers">
+      <div class="lv a" style="--d:6.8"><small>Leva</small><span>nel corpo</span></div>
+      <div class="lv a" style="--d:7.3"><small>Leva</small><span>nella valutazione</span></div>
+      <div class="lv a" style="--d:7.8"><small>Leva</small><span>nelle parole</span></div>
+    </div>
+    <div class="ft ai" style="--d:.6"><span><b>KOINEME™</b> · Modulo 2</span><span>Ogni emozione, lungo tutto il suo flusso</span></div>
+  </div>
+</section>
+
+<!-- 2 · QUATTRO COPPIE -->
+<section class="tav" data-t="2">
+  <div class="tav-bar"><span>Tavola 2 · Quattro lezioni, quattro coppie</span><button type="button">Ripeti</button></div>
+  <div class="stage s2">
+    <div class="wheel"><svg id="wheel" viewBox="0 0 600 600" role="img" aria-label="Le otto emozioni fondamentali disposte in cerchio, unite a coppie"></svg></div>
+    <div class="txt">
+      <p class="eb a" style="--d:0">KOINEME™ · Modulo 2 · Attraverso le emozioni</p>
+      <h2 class="a" style="--d:.25">Quattro lezioni, una per ciascuna coppia che la natura <em>ha legato fra loro</em>.</h2>
+      <ol class="lessons">
+        <li class="a" style="--d:3.2"><small>Lezione 1</small><span><b>paura</b><i>e</i><b>rabbia</b></span></li>
+        <li class="a" style="--d:4.8"><small>Lezione 2</small><span><b>gioia</b><i>e</i><b>tristezza</b></span></li>
+        <li class="a" style="--d:6.4"><small>Lezione 3</small><span><b>fiducia</b><i>e</i><b>disgusto</b></span></li>
+        <li class="a" style="--d:8"><small>Lezione 4</small><span><b>sorpresa</b><i>e</i><b>anticipazione</b></span></li>
+      </ol>
+      <div class="chips">
+        <span class="chip a" style="--d:9.6"><b>4 + 1</b> incontri online live</span>
+        <span class="chip a" style="--d:10">homework dedicati</span>
+      </div>
+    </div>
+    <div class="ft ai" style="--d:.6"><span><b>KOINEME™</b> · Modulo 2</span><span>Le otto emozioni fondamentali</span></div>
+  </div>
+</section>
+
+<!-- 3 · DIFFERENZE -->
+<section class="tav" data-t="3">
+  <div class="tav-bar"><span>Tavola 3 · Una collezione di differenze</span><button type="button">Ripeti</button></div>
+  <div class="stage s3">
+    <p class="eb a" style="--d:0">Che cosa rende unico il Modulo 2</p>
+    <h2 class="a" style="--d:.25">Non una collezione di emozioni, <em>ma di differenze.</em></h2>
+    <p class="lead a" style="--d:.7">Ogni lezione ti consegna una distinzione che la lingua comune confonde.</p>
+    <div class="rows">
+      <div class="row"><span class="w w1" style="--d:1.8">la paura</span><span class="ne" style="--d:1.8">≠</span><span class="w w2" style="--d:1.8">l’ansia</span></div>
+      <div class="row"><span class="w w1" style="--d:3.2">la rabbia</span><span class="ne" style="--d:3.2">≠</span><span class="w w2" style="--d:3.2">il rancore</span></div>
+      <div class="row"><span class="w w1" style="--d:4.6">la fiducia</span><span class="ne" style="--d:4.6">≠</span><span class="w w2" style="--d:4.6">la simpatia</span></div>
+      <div class="row"><span class="w w1" style="--d:6">la preoccupazione</span><span class="ne" style="--d:6">≠</span><span class="w w2" style="--d:6">la responsabilità</span></div>
+    </div>
+    <p class="close a" style="--d:8">E la distinzione si mette alla prova nella tua relazione, mentre accade.</p>
+    <div class="ft ai" style="--d:.6"><span><b>KOINEME™</b> · Modulo 2</span><span>Nomi generici → esperienze che sai distinguere</span></div>
+  </div>
+</section>
+
+<!-- 4 · CORE S+PAKB -->
+<section class="tav" data-t="4">
+  <div class="tav-bar"><span>Tavola 4 · CORE S+PAKB</span><button type="button">Ripeti</button></div>
+  <div class="stage s4">
+    <div class="txt">
+      <p class="eb a" style="--d:0">Il modello alla base</p>
+      <p class="acr a" style="--d:.2">CORE <span class="L" style="--d:1.6">S</span>+<span class="L" style="--d:2.4">P</span><span class="L" style="--d:3.2">A</span><span class="L" style="--d:4">K</span><span class="L" style="--d:4.8">B</span></p>
+      <p class="exp a" style="--d:.6">Constructed Origins and Rational Evolution</p>
+      <p class="exp2 a" style="--d:.9">dalle radici evolutive alla costruzione consapevole</p>
+      <p class="cap a" style="--d:6.2">Cinque autori delle scienze affettive e del comportamento, abitualmente letti in contrapposizione, <b>smettono di contraddirsi e diventano cineprese</b> che filmano lo stesso evento da angolazioni complementari.</p>
+    </div>
+    <div class="dia"><svg id="cams" viewBox="0 0 800 660" role="img" aria-label="Cinque cineprese, Scherer, Plutchik, Ariely, Kahneman e Barrett, puntate sullo stesso evento"></svg></div>
+    <div class="base">
+      <span class="who a" style="--d:8.2"><b>Jesper Juul</b>la base: l’individuo al centro del processo, in pari dignità</span>
+      <span class="vals">
+        <span class="chip a" style="--d:8.8">pari dignità</span>
+        <span class="chip a" style="--d:9.1">integrità</span>
+        <span class="chip a" style="--d:9.4">autenticità</span>
+        <span class="chip a" style="--d:9.7">responsabilità personale</span>
+      </span>
+    </div>
+    <div class="ft ai" style="--d:.6"><span><b>KOINEME™</b> · Modulo 2</span><span>Plutchik · Scherer · Barrett · Ariely · Kahneman</span></div>
+  </div>
+</section>
+
+<!-- 5 · CHI SEI DOPO -->
+<section class="tav" data-t="5">
+  <div class="tav-bar"><span>Tavola 5 · Chi sei dopo</span><button type="button">Ripeti</button></div>
+  <div class="stage s5">
+    <p class="eb a" style="--d:0">KOINEME™ · Il percorso</p>
+    <h2 class="a" style="--d:.25">Chi sei <em>dopo.</em></h2>
+    <div class="cols">
+      <div class="col a" style="--d:1">
+        <span class="mod">Modulo 1 · La Soglia</span>
+        <p class="q">È un’emozione <em>oppure no?</em></p>
+        <ul class="no">
+          <li style="--d:2.2">un pensiero che ritorna</li>
+          <li style="--d:2.6">uno stato di fondo</li>
+          <li style="--d:3">un corpo che chiede sonno, cibo, acqua o movimento</li>
+        </ul>
+        <p class="out">Intervieni dove il bisogno nasce davvero.</p>
+      </div>
+      <div class="col a" style="--d:4.4">
+        <span class="mod">Modulo 2 · Attraverso le emozioni</span>
+        <p class="q">Quale emozione, <em>e dove si inceppa?</em></p>
+        <div class="dots" aria-label="le otto emozioni">
+          <i class="ai" style="--d:5.2;background:var(--paura)"></i><i class="ai" style="--d:5.35;background:var(--rabbia)"></i>
+          <i class="ai" style="--d:5.5;background:var(--gioia)"></i><i class="ai" style="--d:5.65;background:var(--tristezza)"></i>
+          <i class="ai" style="--d:5.8;background:var(--fiducia)"></i><i class="ai" style="--d:5.95;background:var(--disgusto)"></i>
+          <i class="ai" style="--d:6.1;background:var(--sorpresa)"></i><i class="ai" style="--d:6.25;background:var(--anticipazione)"></i>
+        </div>
+        <ul>
+          <li class="a" style="--d:6.6">tre modi per intervenire: nel corpo, nella valutazione, nelle parole</li>
+          <li class="a" style="--d:7">dentro le tue relazioni, mentre accadono</li>
+        </ul>
+        <p class="out">Da vittima passiva delle tue reazioni automatiche a ingegnere consapevole del tuo stato emotivo.</p>
+      </div>
+      <div class="col last a" style="--d:8.4">
+        <span class="mod">Modulo 1 + Modulo 2</span>
+        <p class="q">Sentire cose che finora <em>non potevi sentire.</em></p>
+        <ul>
+          <li class="a" style="--d:9.2">ciò che accade dentro e ciò che mostri fuori tornano allineati</li>
+          <li class="a" style="--d:9.6">a casa e al lavoro</li>
+        </ul>
+        <p class="out">Smetti di riversare su chi ti sta accanto ciò che non sai nominare.</p>
+      </div>
+    </div>
+    <div class="ft ai" style="--d:.6"><span><b>KOINEME™</b> · Modulo 1 + Modulo 2</span><span>Distinguere · comprendere · comunicare</span></div>
+  </div>
+</section>
+
+<!-- 6 · LO SPAZIO -->
+<section class="tav" data-t="6">
+  <div class="tav-bar"><span>Tavola 6 · Lo spazio</span><button type="button">Ripeti</button></div>
+  <div class="stage s6">
+    <p class="eb a" style="--d:0">KOINEME™ · Modulo 1 + Modulo 2</p>
+    <div class="gap a" style="--d:.4">
+      <div class="blk">la reazione</div>
+      <div class="space"><span>spazio</span></div>
+      <div class="blk">la decisione</div>
+    </div>
+    <p class="say a" style="--d:4.2">Le vecchie reazioni potranno tornare, ma fra la reazione e la decisione si apre uno spazio, <b>e in quello spazio l’ordine si può invertire.</b></p>
+    <p class="big a" style="--d:7">Le emozioni ci separano finché restano senza nome.</p>
+    <p class="big2 a" style="--d:8.8">Chi apprende a nominarle diventa meno solo, e capace di trasformare il conflitto in connessione.</p>
+    <div class="ft ai" style="--d:.6"><span><b>KOINEME™</b></span><span>Fuori con gli altri, dentro fra parti di te stesso</span></div>
+  </div>
+</section>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; };
+
+// ---- tavola 2: il cerchio delle otto emozioni, le coppie si uniscono lungo i diametri
+(() => {
+  const svg = document.getElementById('wheel');
+  const C = 300, R = 205, RL = 252;
+  const emo = ['gioia','fiducia','paura','sorpresa','tristezza','disgusto','rabbia','anticipazione'];
+  const pos = (i, r) => { const a = (-90 + i * 45) * Math.PI / 180; return [C + r * Math.cos(a), C + r * Math.sin(a)]; };
+  const defs = el('defs', {}, svg);
+  el('circle', { cx:C, cy:C, r:R, fill:'none', stroke:'rgba(236,220,192,.14)', 'stroke-width':1.2, class:'ai', style:'--d:.4' }, svg);
+  // le coppie, nell'ordine delle lezioni
+  const pairs = [[2,6],[0,4],[1,5],[3,7]];
+  pairs.forEach(([a,b], k) => {
+    const [x1,y1] = pos(a,R), [x2,y2] = pos(b,R);
+    const g = el('linearGradient', { id:'g'+k, gradientUnits:'userSpaceOnUse', x1, y1, x2, y2 }, defs);
+    el('stop', { offset:0, 'stop-color':`var(--${emo[a]})` }, g);
+    el('stop', { offset:1, 'stop-color':`var(--${emo[b]})` }, g);
+    el('path', { d:`M${x1} ${y1}L${x2} ${y2}`, pathLength:1, class:'dia', stroke:`url(#g${k})`, style:`--d:${3 + k*1.6}` }, svg);
+  });
+  emo.forEach((name, i) => {
+    const [x,y] = pos(i,R), [lx,ly] = pos(i,RL);
+    const d = .9 + i * .18;
+    el('circle', { cx:x, cy:y, r:11, fill:`var(--${name})`, class:'ai', style:`--d:${d}` }, svg);
+    el('circle', { cx:x, cy:y, r:20, fill:'none', stroke:`var(--${name})`, 'stroke-opacity':.35, class:'ai', style:`--d:${d}` }, svg);
+    const anchor = Math.abs(lx - C) < 8 ? 'middle' : (lx > C ? 'start' : 'end');
+    const t = el('text', { x:lx, y:ly + 7, 'text-anchor':anchor, class:'lbl ai', style:`--d:${d}` }, svg);
+    t.textContent = name;
+  });
+  el('circle', { cx:C, cy:C, r:9, fill:'var(--glow)', class:'core ai', style:'--d:9' }, svg);
+})();
+
+// ---- tavola 4: cinque cineprese puntate sullo stesso evento
+(() => {
+  const svg = document.getElementById('cams');
+  const C = [400, 320], R = 250;
+  const names = ['Scherer','Plutchik','Ariely','Kahneman','Barrett'];   // nell'ordine dell'acronimo S+PAKB
+  const angles = [-90, -18, 54, 126, 198];
+  const defs = el('defs', {}, svg);
+  const rg = el('radialGradient', { id:'ev' }, defs);
+  el('stop', { offset:0, 'stop-color':'#fff6dc' }, rg);
+  el('stop', { offset:.35, 'stop-color':'#f4c56e' }, rg);
+  el('stop', { offset:1, 'stop-color':'#f4c56e', 'stop-opacity':0 }, rg);
+  const beams = el('g', {}, svg);
+  names.forEach((n, k) => {
+    const a = angles[k] * Math.PI / 180;
+    const cx = C[0] + R * Math.cos(a), cy = C[1] + R * Math.sin(a);
+    const d = 1.6 + k * .8;
+    // il fascio: dall'obiettivo (stretto) all'evento (largo)
+    const ux = (C[0]-cx)/R, uy = (C[1]-cy)/R, px = -uy, py = ux;
+    const lx = cx + ux*44, ly = cy + uy*44;
+    const ex = C[0] - ux*18, ey = C[1] - uy*18;
+    const lg = el('linearGradient', { id:'b'+k, gradientUnits:'userSpaceOnUse', x1:lx, y1:ly, x2:ex, y2:ey }, defs);
+    el('stop', { offset:0, 'stop-color':'#f4c56e', 'stop-opacity':.55 }, lg);
+    el('stop', { offset:1, 'stop-color':'#f4c56e', 'stop-opacity':.06 }, lg);
+    el('polygon', { points:`${lx+px*9},${ly+py*9} ${lx-px*9},${ly-py*9} ${ex-px*58},${ey-py*58} ${ex+px*58},${ey+py*58}`, fill:`url(#b${k})`, class:'beam', style:`--d:${d+.3}` }, beams);
+    // la cinepresa, girata verso il centro
+    const g = el('g', { transform:`translate(${cx} ${cy}) rotate(${angles[k]+180})`, class:'cam', style:`--d:${d}` }, svg);
+    el('rect', { x:-26, y:-17, width:46, height:34, rx:5, fill:'#1a1512', stroke:'#ecdcc0', 'stroke-width':1.6 }, g);
+    el('path', { d:'M20 -9 L42 -16 L42 16 L20 9 Z', fill:'#1a1512', stroke:'#f4c56e', 'stroke-width':1.6, 'stroke-linejoin':'round' }, g);
+    el('circle', { cx:-14, cy:-28, r:10, fill:'none', stroke:'#c9bba4', 'stroke-width':1.4 }, g);
+    el('circle', { cx:8, cy:-28, r:10, fill:'none', stroke:'#c9bba4', 'stroke-width':1.4 }, g);
+    const off = Math.abs(Math.cos(a)) > .5 ? 96 : 70;
+    const tx = C[0] + (R + off) * Math.cos(a), ty = C[1] + (R + off) * Math.sin(a) + (Math.sin(a) < -.5 ? -6 : 0);
+    const t = el('text', { x:tx, y:ty + 8, class:'name cam', style:`--d:${d}` }, svg);
+    t.textContent = n;
+  });
+  el('circle', { cx:C[0], cy:C[1], r:22, fill:'none', stroke:'#f4c56e', 'stroke-width':1.5, class:'rg' }, svg);
+  el('circle', { cx:C[0], cy:C[1], r:22, fill:'none', stroke:'#f4c56e', 'stroke-width':1.5, class:'rg rg2' }, svg);
+  el('circle', { cx:C[0], cy:C[1], r:46, fill:'url(#ev)', class:'cam', style:'--d:.8' }, svg);
+  const t = el('text', { x:C[0], y:C[1] + 78, class:'name cam', style:'--d:1;font-style:italic;font-size:19px;fill:#c9bba4' }, svg);
+  t.textContent = 'lo stesso evento';
+})();
+
+// ---- avvio: ogni tavola parte quando entra nello schermo; "Ripeti" la fa ripartire
+const q = new URLSearchParams(location.search);
+const play = (stage) => { stage.classList.remove('on'); void stage.offsetWidth; stage.classList.add('on'); };
+if (q.has('t')) {
+  const tav = document.querySelector(`.tav[data-t="${q.get('t')}"]`);
+  if (tav) tav.classList.add('pick');
+}
+if (q.has('rec')) {
+  // la registrazione avvia e ferma il tempo da sé (window.__seek)
+  window.__start = () => { const s = document.querySelector('.tav.pick .stage'); s.classList.add('on'); return s.getAnimations({ subtree:true }).length; };
+  window.__seek = (ms) => { for (const a of document.getAnimations()) { a.pause(); a.currentTime = ms; } };
+} else {
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting && !e.target.classList.contains('on')) play(e.target);
+  }, { threshold: .45 });
+  document.querySelectorAll('.stage').forEach(s => io.observe(s));
+  document.querySelectorAll('.tav-bar button').forEach(b => b.addEventListener('click', () => play(b.closest('.tav').querySelector('.stage'))));
+}
+</script>
+</body>
+</html>
