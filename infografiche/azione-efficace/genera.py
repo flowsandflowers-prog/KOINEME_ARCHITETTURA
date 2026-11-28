@@ -29,8 +29,12 @@ END=S2[3]+IN+PA+OUT_+1.5; RESET=END+0.7
 DIS=[S2[1],S2[2],S2[3],END]   # ognuno si dissolve quando parte il successivo                  # ≈ 34.3
 
 # griglia e fondo
-g=''.join(f'<path d="M{x} 0V400"/>' for x in range(30,300,40))+''.join(f'<path d="M0 {y}H300"/>' for y in range(20,400,40))
-B.append(f'<rect width="300" height="400" fill="{BG}"/><g mask="url(#{P}vm)" stroke="{INK}" stroke-opacity=".06">{g}</g>')
+# rete a due livelli: fine e chiarissima, poi linee principali più marcate con piccole croci in alcuni incroci
+fine=''.join(f'<path d="M{x} 0V400"/>' for x in range(10,300,20))+''.join(f'<path d="M0 {y}H300"/>' for y in range(12,400,20))
+princ=''.join(f'<path d="M{x} 0V400"/>' for x in (70,150,230))+''.join(f'<path d="M0 {y}H300"/>' for y in (92,172,252,332))
+croci=''.join(f'<path d="M{x-3.5} {y}H{x+3.5}M{x} {y-3.5}V{y+3.5}"/>' for x,y in ((70,172),(230,172),(70,252),(150,332)))
+g=f'<g stroke-opacity=".045">{fine}</g><g stroke-opacity=".13">{princ}</g><g stroke-opacity=".45" stroke-width="1.1">{croci}</g>'
+B.append(f'<rect width="300" height="400" fill="{BG}"/><g mask="url(#{P}vm)" stroke="{INK}">{g}</g>')
 # percorsi della fase 1 (tratteggio) e della fase 2 (tratteggio)
 kf('f1',[('0%','opacity:1'),(SPLIT,'opacity:1'),(SPLIT_END,'opacity:0'),(END,'opacity:0'),(RESET,'opacity:1'),('100%','opacity:1')])
 kf('f2',[('0%','opacity:0'),(SPLIT,'opacity:0'),(SPLIT_END,'opacity:1'),(END,'opacity:1'),(RESET,'opacity:0'),('100%','opacity:0')])

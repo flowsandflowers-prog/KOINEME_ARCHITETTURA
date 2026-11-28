@@ -22,8 +22,12 @@ def path(k): x=RX[k]; return f'M{CX} {SY} V{CY} V{VY} C {CX} {VY-50}, {x} {RY+60
 # tempi di un giro
 def tempi(r0): return dict(s=r0, c=r0+1.2, c2=r0+2.6, v=r0+3.4, v2=r0+4.5, a=r0+5.7, f=r0+6.9, f2=r0+7.5)
 R={'p':tempi(0.4),'r':tempi(8.4)}
-g=''.join(f'<path d="M{x} 0V400"/>' for x in range(30,300,40))+''.join(f'<path d="M0 {y}H300"/>' for y in range(20,400,40))
-B.append(f'<rect y="12" width="300" height="360" fill="#fff"/><g mask="url(#{P}vm)" stroke="{INK}" stroke-opacity=".06">{g}</g>')
+# rete a due livelli: fine e chiarissima, poi linee principali più marcate con piccole croci in alcuni incroci
+fine=''.join(f'<path d="M{x} 0V400"/>' for x in range(10,300,20))+''.join(f'<path d="M0 {y}H300"/>' for y in range(12,400,20))
+princ=''.join(f'<path d="M{x} 0V400"/>' for x in (70,150,230))+''.join(f'<path d="M0 {y}H300"/>' for y in (92,172,252,332))
+croci=''.join(f'<path d="M{x-3.5} {y}H{x+3.5}M{x} {y-3.5}V{y+3.5}"/>' for x,y in ((70,172),(230,252),(70,332)))
+g=f'<g stroke-opacity=".045">{fine}</g><g stroke-opacity=".13">{princ}</g><g stroke-opacity=".45" stroke-width="1.1">{croci}</g>'
+B.append(f'<rect y="12" width="300" height="360" fill="#fff"/><g mask="url(#{P}vm)" stroke="{INK}">{g}</g>')
 for k in 'pr': B.append(f'<path d="{path(k)}" class="att"/>')
 for k in 'pr':
     t=R[k]; L1=SY-CY; L2=CY-VY; L3=bl((CX,VY),(CX,VY-50),(RX[k],RY+60),(RX[k],RY)); L=L1+L2+L3
