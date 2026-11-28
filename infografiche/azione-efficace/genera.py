@@ -108,7 +108,7 @@ html=f'''<!-- KOINEME™ · AZIONE EFFICACE · blocco per un elemento di codice 
 <style>
 /* ALLINEAMENTO: cambia il numero qui sotto per spostare l'animazione. Negativo = più su (es. -40px), positivo = più giù (es. 30px). */
 .kn-ae-w{{--sposta:0px}}
-.kn-ae-w{{container-type:inline-size;max-width:500px;margin:var(--sposta) auto 0}}
+.kn-ae-w{{container-type:inline-size;max-width:400px;margin:var(--sposta) auto 0}}
 .kn-ae{{width:100%;overflow:hidden;background:{BG}}}
 .kn-ae svg{{display:block;width:100%;height:auto}}
 .kn-ae text{{font-family:"Exo",system-ui,sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.9px}}
@@ -118,7 +118,7 @@ html=f'''<!-- KOINEME™ · AZIONE EFFICACE · blocco per un elemento di codice 
 .kn-ae .cx{{transform-box:fill-box;transform-origin:center}}
 /* le scritte restano della stessa misura a ogni larghezza: un po' più piccole su schermo largo */
 .kn-ae .pl{{transform-box:fill-box;transform-origin:center;transform:scale(.92)}}
-@container (min-width:420px){{.kn-ae .pl{{transform:scale(.66)}}}}
+@container (min-width:390px){{.kn-ae .pl{{transform:scale(.86)}}}}
 {chr(10).join(css)}
 @media (prefers-reduced-motion:reduce){{.kn-ae *{{animation:none!important}}}}
 </style>
